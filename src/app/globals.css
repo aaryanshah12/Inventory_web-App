@@ -39,11 +39,11 @@ body {
 .input-field {
   @apply w-full bg-surface border border-border rounded-lg px-4 py-3 text-sm text-white
          placeholder-muted outline-none transition-all duration-200
-         focus:border-inputer focus:ring-1 focus:ring-inputer/30;
+         focus:border-inputer focus:ring-1;
 }
 
-.input-field.owner-focus:focus   { @apply border-owner ring-owner/30; }
-.input-field.chemist-focus:focus { @apply border-chemist ring-chemist/30; }
+.input-field.owner-focus:focus   { @apply border-owner; }
+.input-field.chemist-focus:focus { @apply border-chemist; }
 
 /* Card base */
 .card {
