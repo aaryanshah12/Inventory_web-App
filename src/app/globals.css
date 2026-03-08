@@ -68,7 +68,7 @@ body {
 /* Table */
 .data-table { @apply w-full text-sm; }
 .data-table th { @apply text-left text-xs font-mono text-muted uppercase tracking-widest px-4 py-3 border-b border-border whitespace-nowrap; }
-.data-table td { @apply px-4 py-3 border-b border-border/50 text-sm; }
+.data-table td { @apply px-4 py-3 border-b border-border text-sm; }
 .data-table tr:hover td { @apply bg-white/[0.02]; }
 
 /* Mobile table wrapper — always wrap tables in this on mobile */
