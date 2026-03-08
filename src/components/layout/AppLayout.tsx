@@ -123,16 +123,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {navItems.map(item => {
           const active = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href))
           return (
-            <Link
+            <button
               key={item.href}
-              href={item.href}
+              onClick={() => { setSidebarOpen(false); router.push(item.href) }}
               className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 group',
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 group',
                 active
                   ? clsx('text-primary font-medium',
                       role === 'owner'   ? 'bg-owner/15 border border-owner/30' :
                       role === 'inputer' ? 'bg-inputer/15 border border-inputer/30' :
-                                           'bg-chemist/15 border border-chemist/30')
+                                          'bg-chemist/15 border border-chemist/30')
                   : 'text-muted hover:text-primary hover:bg-layer'
               )}
             >
@@ -141,7 +141,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
               {item.label}
               {active && <ChevronRight size={14} className="ml-auto opacity-50" />}
-            </Link>
+            </button>
           )
         })}
       </nav>
