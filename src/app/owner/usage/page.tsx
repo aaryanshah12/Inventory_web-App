@@ -21,7 +21,7 @@ export default function OwnerUsagePage() {
       ])
       const entryList = e.data ?? []
       // Fetch remaining balance for each invoice
-      const invNums = [...new Set(entryList.map((x: any) => x.invoice_number).filter(Boolean))]
+      const invNums = Array.from(new Set(entryList.map((x: any) => x.invoice_number).filter(Boolean)))
       let balMap: Record<string, number> = {}
       if (invNums.length > 0) {
         const { data: bals } = await supabase
