@@ -62,12 +62,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Close sidebar on outside click
   useEffect(() => {
     if (!sidebarOpen) return
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       const sidebar = document.getElementById('sidebar')
-      if (sidebar && !sidebar.contains(e.target as Node)) setSidebarOpen(false)
+      const target = 'touches' in e ? e.touches[0].target : e.target
+      if (sidebar && !sidebar.contains(target as Node)) setSidebarOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('mousedown', handler as any)
+    document.addEventListener('touchstart', handler as any)
+    return () => {
+      document.removeEventListener('mousedown', handler as any)
+      document.removeEventListener('touchstart', handler as any)
+    }
   }, [sidebarOpen])
 
   async function handleSignOut() {
