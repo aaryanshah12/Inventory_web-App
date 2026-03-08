@@ -264,7 +264,7 @@ export default function ChemistUsagePage() {
                 <div className="flex items-center gap-2 mb-3">
                   <CheckCircle size={14} className="text-chemist" />
                   <span className="font-mono text-xs text-chemist uppercase tracking-widest">Invoice Selected</span>
-                  <Lock size={11} className="text-muted ml-auto" title="Rate hidden" />
+                  <Lock size={11} className="text-muted ml-auto" />
                   <button
                     type="button"
                     onClick={() => { setInvoiceInfo(null); setForm(f => ({ ...f, invoice_number: '' })) }}
