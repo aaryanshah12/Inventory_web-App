@@ -1,12 +1,21 @@
 // Shared helper to call our secure API routes
 // All database writes go through these functions instead of direct Supabase calls
 
+import { supabase } from './supabase'
+
 type ApiResponse = { success?: boolean; error?: string; [key: string]: any }
 
+async function authHeaders() {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 async function call(url: string, method: string, body: object): Promise<ApiResponse> {
+  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   })
   return res.json()
@@ -14,7 +23,10 @@ async function call(url: string, method: string, body: object): Promise<ApiRespo
 
 // ─── USERS ────────────────────────────────────────────────
 export const usersApi = {
-  getAll: () => fetch("/api/users").then(r => r.json()),
+  getAll: async () => {
+    const headers = await authHeaders()
+    return fetch("/api/users", { headers }).then(r => r.json())
+  },
 
   create: (data: { email: string; password: string; full_name: string; role: string; phone?: string; factory_ids?: string[] }) =>
     call('/api/users', 'POST', data),
@@ -28,12 +40,15 @@ export const usersApi = {
 
 // ─── FACTORIES ────────────────────────────────────────────
 export const factoriesApi = {
-  getAll: () => fetch('/api/factories').then(r => r.json()),
+  getAll: async () => {
+    const headers = await authHeaders()
+    return fetch('/api/factories', { headers }).then(r => r.json())
+  },
 
-  create: (data: { name: string; location?: string }) =>
+  create: (data: { name: string; location?: string; materials?: string[] }) =>
     call('/api/factories', 'POST', data),
 
-  update: (data: { id: string; name?: string; location?: string; is_active?: boolean }) =>
+  update: (data: { id: string; name?: string; location?: string; is_active?: boolean; materials?: string[] }) =>
     call('/api/factories', 'PATCH', data),
 
   delete: (id: string) =>

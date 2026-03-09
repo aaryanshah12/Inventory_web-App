@@ -1,21 +1,94 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import type { NextRequest } from 'next/server'
 
-// GET /api/users — Fetch all users + factory assignments via admin (bypasses RLS)
-export async function GET() {
+async function requireOwnerAccess(request: NextRequest) {
+  // Try Bearer token first (works with supabase-js sessions), then fall back to cookies
+  const authHeader = request.headers.get('authorization')
+  const bearer = authHeader?.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null
+
+  let userId: string | null = null
+
+  if (bearer) {
+    const { data, error } = await supabaseAdmin.auth.getUser(bearer)
+    if (error || !data?.user) {
+      return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    }
+    userId = data.user.id
+  } else {
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: auth } = await supabase.auth.getUser()
+    userId = auth?.user?.id ?? null
+  }
+
+  if (!userId) return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+
+  const { data: ownerProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role')
+    .eq('id', userId)
+    .single()
+
+  if (!ownerProfile || ownerProfile.role !== 'owner') {
+    return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  }
+
+  const { data: ownerFactories } = await supabaseAdmin
+    .from('profile_factories')
+    .select('factory_id')
+    .eq('profile_id', userId)
+
+  const allowedFactoryIds = (ownerFactories ?? [])
+    .map((r: any) => r.factory_id)
+    .filter(Boolean)
+
+  return { userId, allowedFactoryIds }
+}
+
+// GET /api/users — Only return users tied to factories the signed-in owner can access
+export async function GET(request: NextRequest) {
   try {
-    const [{ data: users, error: usersError }, { data: pfRows }, { data: factories }] = await Promise.all([
-      supabaseAdmin.from('profiles').select('*').order('role').order('full_name'),
-      supabaseAdmin.from('profile_factories').select('profile_id, factory_id'),
-      supabaseAdmin.from('factories').select('*').eq('is_active', true).order('name'),
+    const access = await requireOwnerAccess(request)
+    if (access.response) return access.response
+    const { allowedFactoryIds } = access
+
+    if (allowedFactoryIds.length === 0) {
+      return NextResponse.json({ users: [], factories: [], pfMap: {}, assignedFactories: [] })
+    }
+
+    // Fetch profile-factory links limited to owner’s factories
+    const { data: pfRows } = await supabaseAdmin
+      .from('profile_factories')
+      .select('profile_id, factory_id')
+      .in('factory_id', allowedFactoryIds)
+
+    const profileIds = Array.from(new Set((pfRows ?? []).map((r: any) => r.profile_id)))
+
+    if (profileIds.length === 0) {
+      return NextResponse.json({ users: [], factories: [], pfMap: {}, assignedFactories: allowedFactoryIds })
+    }
+
+    const [{ data: users, error: usersError }, { data: factories }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*').in('id', profileIds).order('role').order('full_name'),
+      supabaseAdmin.from('factories').select('*').in('id', allowedFactoryIds).eq('is_active', true).order('name'),
     ])
+
     if (usersError) return NextResponse.json({ error: usersError.message }, { status: 400 })
+
     const pfMap: Record<string, string[]> = {}
     ;(pfRows ?? []).forEach((r: any) => {
       if (!pfMap[r.profile_id]) pfMap[r.profile_id] = []
       pfMap[r.profile_id].push(r.factory_id)
     })
-    return NextResponse.json({ users: users ?? [], factories: factories ?? [], pfMap })
+
+    return NextResponse.json({
+      users: users ?? [],
+      factories: factories ?? [],
+      pfMap,
+      assignedFactories: allowedFactoryIds,
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
@@ -23,8 +96,16 @@ export async function GET() {
 
 
 // POST /api/users — Create new user
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const access = await requireOwnerAccess(request)
+    if (access.response) return access.response
+    const { allowedFactoryIds } = access
+
+    if (allowedFactoryIds.length === 0) {
+      return NextResponse.json({ error: 'No factory access configured for this owner' }, { status: 403 })
+    }
+
     const { email, password, full_name, role, phone, factory_ids } = await request.json()
 
     if (!email || !password || !full_name || !role) {
@@ -59,7 +140,11 @@ export async function POST(request: Request) {
 
     // Assign factories if provided
     if (Array.isArray(factory_ids) && factory_ids.length > 0) {
-      const rows = factory_ids.map((factory_id: string) => ({
+      const safeIds = factory_ids.filter((id: string) => allowedFactoryIds.includes(id))
+      if (safeIds.length === 0) {
+        return NextResponse.json({ error: 'You can only assign factories you own' }, { status: 403 })
+      }
+      const rows = safeIds.map((factory_id: string) => ({
         profile_id: data.user.id,
         factory_id,
       }))
@@ -73,8 +158,16 @@ export async function POST(request: Request) {
 }
 
 // PATCH /api/users — Update user profile + factory assignments
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
+    const access = await requireOwnerAccess(request)
+    if (access.response) return access.response
+    const { allowedFactoryIds } = access
+
+    if (allowedFactoryIds.length === 0) {
+      return NextResponse.json({ error: 'No factory access configured for this owner' }, { status: 403 })
+    }
+
     const { id, full_name, phone, role, is_active, factory_ids } = await request.json()
     if (!id) return NextResponse.json({ error: 'User ID required' }, { status: 400 })
 
@@ -92,9 +185,19 @@ export async function PATCH(request: Request) {
 
     // Replace factory assignments if factory_ids is provided
     if (Array.isArray(factory_ids)) {
-      await supabaseAdmin.from('profile_factories').delete().eq('profile_id', id)
-      if (factory_ids.length > 0) {
-        const rows = factory_ids.map((factory_id: string) => ({ profile_id: id, factory_id }))
+      const safeIds = factory_ids.filter((fid: string) => allowedFactoryIds.includes(fid))
+
+      // Only touch factory links the owner actually controls
+      if (allowedFactoryIds.length > 0) {
+        await supabaseAdmin
+          .from('profile_factories')
+          .delete()
+          .eq('profile_id', id)
+          .in('factory_id', allowedFactoryIds)
+      }
+
+      if (safeIds.length > 0) {
+        const rows = safeIds.map((factory_id: string) => ({ profile_id: id, factory_id }))
         await supabaseAdmin.from('profile_factories').insert(rows)
       }
     }
@@ -106,10 +209,26 @@ export async function PATCH(request: Request) {
 }
 
 // DELETE /api/users
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
+    const access = await requireOwnerAccess(request)
+    if (access.response) return access.response
+    const { allowedFactoryIds } = access
+
+    if (allowedFactoryIds.length === 0) {
+      return NextResponse.json({ error: 'No factory access configured for this owner' }, { status: 403 })
+    }
+
     const { id } = await request.json()
     if (!id) return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+
+    const { data: targetFactories } = await supabaseAdmin
+      .from('profile_factories')
+      .select('factory_id')
+      .eq('profile_id', id)
+
+    const hasAccess = (targetFactories ?? []).some((r: any) => allowedFactoryIds.includes(r.factory_id))
+    if (!hasAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })

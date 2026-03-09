@@ -70,36 +70,63 @@ export default function ChemistDashboard() {
               <div className="font-mono text-xs text-muted uppercase tracking-widest">Available Stock</div>
               <div className="text-[10px] text-muted mt-0.5">Rates are hidden — quantity only</div>
             </div>
-            <div className="overflow-x-auto">
-              {loading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="w-5 h-5 border-2 border-chemist border-t-transparent rounded-full animate-spin" />
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-5 h-5 border-2 border-chemist border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Invoice No.</th><th>Factory</th><th>Material</th><th>Available</th></tr>
+                    </thead>
+                    <tbody>
+                      {balance.filter(b => Number(b.tons_remaining) > 0).map(b => (
+                        <tr key={b.invoice_number}>
+                          <td className="font-mono text-inputer text-xs">{b.invoice_number}</td>
+                          <td className="text-primary text-xs">{b.factory_name}</td>
+                          <td className="text-muted">{b.material_type}</td>
+                          <td>
+                            <span className={`font-mono font-bold ${Number(b.tons_remaining) < 5 ? 'text-owner' : 'text-chemist'}`}>
+                              {Number(b.tons_remaining).toFixed(3)} KGS
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {balance.length === 0 && (
+                        <tr><td colSpan={4} className="text-center text-muted py-8">No stock available</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr><th>Invoice No.</th><th>Factory</th><th>Material</th><th>Available</th></tr>
-                  </thead>
-                  <tbody>
-                    {balance.filter(b => Number(b.tons_remaining) > 0).map(b => (
-                      <tr key={b.invoice_number}>
-                        <td className="font-mono text-inputer text-xs">{b.invoice_number}</td>
-                        <td className="text-primary text-xs">{b.factory_name}</td>
-                        <td className="text-muted">{b.material_type}</td>
-                        <td>
-                          <span className={`font-mono font-bold ${Number(b.tons_remaining) < 5 ? 'text-owner' : 'text-chemist'}`}>
-                            {Number(b.tons_remaining).toFixed(3)} KGS
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {balance.length === 0 && (
-                      <tr><td colSpan={4} className="text-center text-muted py-8">No stock available</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
+
+                <div className="md:hidden data-card-list p-4">
+                  {balance.length === 0 && (
+                    <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                      No stock available
+                    </div>
+                  )}
+                  {balance.filter(b => Number(b.tons_remaining) > 0).map(b => (
+                    <div key={b.invoice_number} className="data-card">
+                      <div className="data-card-header">
+                        <span className="data-card-title text-inputer">{b.invoice_number}</span>
+                        <span className="data-card-meta">{b.factory_name}</span>
+                      </div>
+                      <div className="data-card-grid">
+                        <span className="data-card-label">Material</span>
+                        <span className="text-muted text-right">{b.material_type}</span>
+
+                        <span className="data-card-label">Available</span>
+                        <span className={`font-mono font-bold text-right ${Number(b.tons_remaining) < 5 ? 'text-owner' : 'text-chemist'}`}>
+                          {Number(b.tons_remaining).toFixed(3)} KGS
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Recent usage */}
@@ -108,7 +135,7 @@ export default function ChemistDashboard() {
               <div className="font-mono text-xs text-muted uppercase tracking-widest">My Recent Usage</div>
               <Link href="/chemist/history" className="text-xs text-chemist hover:underline font-mono">View All →</Link>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
                 <thead>
                   <tr><th>Invoice</th><th>Factory</th><th>Used</th><th>Date</th></tr>
@@ -129,6 +156,28 @@ export default function ChemistDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="md:hidden data-card-list p-4">
+              {recentUsage.length === 0 && (
+                <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                  No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                </div>
+              )}
+              {recentUsage.map(u => (
+                <div key={u.id} className="data-card">
+                  <div className="data-card-header">
+                    <span className="data-card-title text-chemist">{u.invoice_number}</span>
+                    <span className="data-card-meta">{new Date(u.usage_date).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <div className="data-card-grid">
+                    <span className="data-card-label">Factory</span>
+                    <span className="data-card-value">{u.factories?.name ?? '—'}</span>
+
+                    <span className="data-card-label">Used</span>
+                    <span className="font-mono text-chemist text-right">{u.tons_used} KGS</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

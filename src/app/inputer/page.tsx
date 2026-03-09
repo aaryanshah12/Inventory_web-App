@@ -56,43 +56,74 @@ export default function InputerDashboard() {
             <div className="font-mono text-xs text-muted uppercase tracking-widest">Recent Stock Entries</div>
             <Link href="/inputer/history" className="text-xs text-inputer hover:underline font-mono">View All →</Link>
           </div>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Invoice No.</th>
-                    <th>Factory</th>
-                    <th>Supplier</th>
-                    <th>Material</th>
-                    <th>KGS</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEntries.map(e => (
-                    <tr key={e.id}>
-                      <td className="font-mono text-inputer text-xs">{e.invoice_number}</td>
-                      <td className="text-primary text-xs">{e.factories?.name}</td>
-                      <td className="text-primary">{e.supplier_name}</td>
-                      <td className="text-muted">{e.material_type}</td>
-                      <td className="font-mono text-inputer">{e.tons_loaded} KGS</td>
-                      <td className="text-muted text-xs">{new Date(e.entry_date).toLocaleDateString('en-IN')}</td>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Invoice No.</th>
+                      <th>Factory</th>
+                      <th>Supplier</th>
+                      <th>Material</th>
+                      <th>KGS</th>
+                      <th>Date</th>
                     </tr>
-                  ))}
-                  {recentEntries.length === 0 && (
-                    <tr><td colSpan={6} className="text-center text-muted py-10">
-                      No entries yet. <Link href="/inputer/new" className="text-inputer">Create your first →</Link>
-                    </td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody>
+                    {recentEntries.map(e => (
+                      <tr key={e.id}>
+                        <td className="font-mono text-inputer text-xs">{e.invoice_number}</td>
+                        <td className="text-primary text-xs">{e.factories?.name}</td>
+                        <td className="text-primary">{e.supplier_name}</td>
+                        <td className="text-muted">{e.material_type}</td>
+                        <td className="font-mono text-inputer">{e.tons_loaded} KGS</td>
+                        <td className="text-muted text-xs">{new Date(e.entry_date).toLocaleDateString('en-IN')}</td>
+                      </tr>
+                    ))}
+                    {recentEntries.length === 0 && (
+                      <tr><td colSpan={6} className="text-center text-muted py-10">
+                        No entries yet. <Link href="/inputer/new" className="text-inputer">Create your first →</Link>
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="md:hidden data-card-list p-4">
+                {recentEntries.length === 0 && (
+                  <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                    No entries yet. <Link href="/inputer/new" className="text-inputer">Create your first →</Link>
+                  </div>
+                )}
+                {recentEntries.map(e => (
+                  <div key={e.id} className="data-card">
+                    <div className="data-card-header">
+                      <span className="data-card-title text-inputer">{e.invoice_number}</span>
+                      <span className="data-card-meta">{new Date(e.entry_date).toLocaleDateString('en-IN')}</span>
+                    </div>
+                    <div className="data-card-grid">
+                      <span className="data-card-label">Factory</span>
+                      <span className="data-card-value">{e.factories?.name ?? '—'}</span>
+
+                      <span className="data-card-label">Supplier</span>
+                      <span className="data-card-value">{e.supplier_name}</span>
+
+                      <span className="data-card-label">Material</span>
+                      <span className="text-muted text-right">{e.material_type}</span>
+
+                      <span className="data-card-label">KGS</span>
+                      <span className="font-mono text-inputer text-right">{e.tons_loaded} KGS</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </AppLayout>

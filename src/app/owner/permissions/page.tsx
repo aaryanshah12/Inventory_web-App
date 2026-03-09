@@ -22,6 +22,7 @@ export default function PermissionsPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   // New user form state
   const [showAddUser, setShowAddUser] = useState(false)
@@ -29,17 +30,29 @@ export default function PermissionsPage() {
   const [addError, setAddError] = useState('')
   const [addSuccess, setAddSuccess] = useState('')
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const [u, o] = await Promise.all([
-      supabase.from('profiles').select('*').neq('role', 'owner').order('full_name'),
-      supabase.from('permission_overrides').select('*'),
-    ])
-    setUsers(u.data ?? [])
-    setOverrides(o.data ?? [])
+    setLoading(true); setLoadError('')
+    const data = await usersApi.getAll()
+    if (data.error) {
+      setLoadError(data.error)
+      setUsers([]); setOverrides([])
+      setLoading(false)
+      return
+    }
+
+    const accessibleUsers = (data.users ?? []).filter((u: Profile) => u.role !== 'owner')
+    const userIds = accessibleUsers.map(u => u.id)
+    let overrideRows: PermissionOverride[] = []
+    if (userIds.length > 0) {
+      const { data: o } = await supabase.from('permission_overrides').select('*').in('profile_id', userIds)
+      overrideRows = (o as PermissionOverride[]) ?? []
+    }
+
+    setUsers(accessibleUsers)
+    setOverrides(overrideRows)
+    setSelected(prev => (prev && userIds.includes(prev) ? prev : null))
     setLoading(false)
   }
 
@@ -95,6 +108,12 @@ export default function PermissionsPage() {
             </button>
           }
         />
+
+        {loadError && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-300 mb-4">
+            {loadError}
+          </div>
+        )}
 
         {/* Add User Form */}
         {showAddUser && (

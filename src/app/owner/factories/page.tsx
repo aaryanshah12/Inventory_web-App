@@ -18,19 +18,28 @@ export default function FactoriesPage() {
   const [editingId, setEditingId]             = useState<string | null>(null)
   const [success, setSuccess]                 = useState('')
   const [error, setError]                     = useState('')
-  const [form, setForm]                       = useState({ name: '', location: '' })
+  const [form, setForm]                       = useState({ name: '', location: '', materials: [] as string[] })
+  const [materialInput, setMaterialInput]     = useState('')
   const [expandedFactory, setExpandedFactory] = useState<string | null>(null)
   const [assignSaving, setAssignSaving]       = useState(false)
+  const [loadError, setLoadError]             = useState('')
+  const [assignedFactoryIds, setAssignedFactoryIds] = useState<string[]>([])
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
+    setLoading(true); setLoadError('')
     const data = await factoriesApi.getAll()
-    if (!data.error) {
-      setFactories(data.factories ?? [])
-      setProfiles(data.profiles ?? [])
-      setFactoryUsersMap(data.factoryUsersMap ?? {})
+    if (data.error) {
+      setLoadError(data.error)
+      setFactories([]); setProfiles([]); setFactoryUsersMap({})
+      setLoading(false)
+      return
     }
+    setFactories(data.factories ?? [])
+    setProfiles(data.profiles ?? [])
+    setFactoryUsersMap(data.factoryUsersMap ?? {})
+    setAssignedFactoryIds(data.assignedFactories ?? [])
     setLoading(false)
   }
 
@@ -38,14 +47,20 @@ export default function FactoriesPage() {
 
   function startEdit(factory: Factory) {
     setEditingId(factory.id)
-    setForm({ name: factory.name, location: factory.location ?? '' })
+    setForm({
+      name: factory.name,
+      location: factory.location ?? '',
+      materials: (factory.materials ?? []) as string[],
+    })
+    setMaterialInput('')
     setShowForm(true)
     setError(''); setSuccess('')
   }
 
   function resetForm() {
     setShowForm(false); setEditingId(null)
-    setForm({ name: '', location: '' })
+    setForm({ name: '', location: '', materials: [] })
+    setMaterialInput('')
     setError(''); setSuccess('')
   }
 
@@ -53,8 +68,8 @@ export default function FactoriesPage() {
     e.preventDefault()
     setSaving(true); setError(''); setSuccess('')
     const result = editingId
-      ? await factoriesApi.update({ id: editingId, name: form.name, location: form.location })
-      : await factoriesApi.create({ name: form.name, location: form.location })
+      ? await factoriesApi.update({ id: editingId, name: form.name, location: form.location, materials: form.materials })
+      : await factoriesApi.create({ name: form.name, location: form.location, materials: form.materials })
     if (result.error) { setError(result.error); setSaving(false); return }
     setSuccess(`Factory "${form.name}" ${editingId ? 'updated' : 'created'} successfully!`)
     await loadAll()
@@ -81,6 +96,18 @@ export default function FactoriesPage() {
 
   const assignableUsers = profiles.filter(p => p.role !== 'owner' && p.is_active)
 
+  function addMaterialChip() {
+    const value = materialInput.trim()
+    if (!value) return
+    if (form.materials.includes(value)) { setMaterialInput(''); return }
+    setForm(f => ({ ...f, materials: [...f.materials, value] }))
+    setMaterialInput('')
+  }
+
+  function removeMaterialChip(value: string) {
+    setForm(f => ({ ...f, materials: f.materials.filter(m => m !== value) }))
+  }
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
@@ -94,6 +121,20 @@ export default function FactoriesPage() {
             </button>
           }
         />
+
+        {loadError && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-300 mb-4">
+            {loadError}
+          </div>
+        )}
+
+        {!loading && !loadError && assignedFactoryIds.length === 0 && (
+          <div className="card p-6 mb-4">
+            <p className="text-sm text-muted">
+              No factories are assigned to your owner account. You need factory access before you can view or manage them.
+            </p>
+          </div>
+        )}
 
         {success && (
           <div className="flex items-center gap-3 bg-chemist/10 border border-chemist/30 rounded-xl px-5 py-3 mb-6 animate-fade-down">
@@ -116,6 +157,33 @@ export default function FactoriesPage() {
               <div>
                 <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">Location</label>
                 <input className="input-field owner-focus" value={form.location} onChange={e => update('location', e.target.value)} placeholder="e.g. Ahmedabad, Gujarat" />
+              </div>
+              <div className="col-span-2">
+                <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">Materials (chip list)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {form.materials.map(m => (
+                    <span key={m} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-owner/10 border border-owner/30 text-xs font-mono">
+                      {m}
+                      <button type="button" onClick={() => removeMaterialChip(m)} className="text-muted hover:text-white">×</button>
+                    </span>
+                  ))}
+                  {form.materials.length === 0 && (
+                    <span className="text-xs text-muted">No materials added</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className="input-field owner-focus flex-1"
+                    value={materialInput}
+                    onChange={e => setMaterialInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); addMaterialChip() }
+                      if (e.key === ',' ) { e.preventDefault(); addMaterialChip() }
+                    }}
+                    placeholder="Type a material and press Enter"
+                  />
+                  <button type="button" onClick={addMaterialChip} className="btn btn-owner whitespace-nowrap">Add</button>
+                </div>
               </div>
               {error && (
                 <div className="col-span-2 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">{error}</div>
@@ -181,6 +249,22 @@ export default function FactoriesPage() {
                       <span className="font-mono text-[10px] text-muted">
                         {new Date(factory.created_at).toLocaleDateString('en-IN')}
                       </span>
+                    </div>
+
+                    {/* Materials */}
+                    <div className="mb-3">
+                      <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-1.5">Materials</div>
+                      {factory.materials && factory.materials.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {factory.materials.map(m => (
+                            <span key={m} className="text-[10px] font-mono px-2 py-0.5 rounded bg-owner/15 text-owner border border-owner/30 whitespace-nowrap">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted italic">No materials listed</span>
+                      )}
                     </div>
 
                     {/* Assigned users summary */}

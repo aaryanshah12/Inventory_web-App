@@ -6,9 +6,11 @@ import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { FactorySummary } from '@/types'
 import { Package, FlaskConical, Factory, TrendingUp, AlertTriangle } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function OwnerDashboard() {
+  const { profile, loading: authLoading } = useAuth()
   const [summaries, setSummaries]   = useState<FactorySummary[]>([])
   const [recentStock, setRecentStock] = useState<any[]>([])
   const [recentUsage, setRecentUsage] = useState<any[]>([])
@@ -16,10 +18,16 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     async function load() {
+      if (authLoading) return
+      const factoryIds = (profile?.factories ?? []).map((f: any) => f.id).filter(Boolean)
+      if (factoryIds.length === 0) {
+        setSummaries([]); setRecentStock([]); setRecentUsage([]); setLoading(false)
+        return
+      }
       const [s, rs, ru] = await Promise.all([
-        supabase.from('factory_summary').select('*'),
-        supabase.from('stock_entries').select('*, factories(name)').order('created_at', { ascending: false }).limit(5),
-        supabase.from('usage_entries').select('*, factories(name), profiles(full_name)').order('created_at', { ascending: false }).limit(5),
+        supabase.from('factory_summary').select('*').in('factory_id', factoryIds),
+        supabase.from('stock_entries').select('*, factories(name)').in('factory_id', factoryIds).order('created_at', { ascending: false }).limit(5),
+        supabase.from('usage_entries').select('*, factories(name), profiles(full_name)').in('factory_id', factoryIds).order('created_at', { ascending: false }).limit(5),
       ])
       setSummaries(s.data ?? [])
       setRecentStock(rs.data ?? [])
@@ -27,7 +35,7 @@ export default function OwnerDashboard() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [authLoading, profile])
 
   const totals = summaries.reduce((acc, s) => ({
     loaded:   acc.loaded   + Number(s.total_tons_loaded),
@@ -108,7 +116,7 @@ export default function OwnerDashboard() {
             <div className="px-4 md:px-6 py-4 border-b border-border">
               <div className="font-mono text-xs text-muted uppercase tracking-widest">Factory Summary</div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
                 <thead>
                   <tr><th>Factory</th><th>Loaded</th><th>Used</th><th>Balance</th></tr>
@@ -132,6 +140,34 @@ export default function OwnerDashboard() {
                 </tbody>
               </table>
             </div>
+
+            <div className="md:hidden data-card-list p-4">
+              {summaries.length === 0 && (
+                <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                  No factories assigned
+                </div>
+              )}
+              {summaries.map(s => (
+                <div key={s.factory_id} className="data-card">
+                  <div className="data-card-header">
+                    <span className="data-card-title text-primary">{s.factory_name}</span>
+                    <span className="data-card-meta">{s.total_invoices} invoices</span>
+                  </div>
+                  <div className="data-card-grid">
+                    <span className="data-card-label">Loaded</span>
+                    <span className="font-mono text-inputer text-right">{Number(s.total_tons_loaded).toFixed(1)} KGS</span>
+
+                    <span className="data-card-label">Used</span>
+                    <span className="font-mono text-chemist text-right">{Number(s.total_tons_used).toFixed(1)} KGS</span>
+
+                    <span className="data-card-label">Balance</span>
+                    <span className={`font-mono font-bold text-right ${Number(s.closing_balance) < 10 ? 'text-red-400' : 'text-owner'}`}>
+                      {Number(s.closing_balance).toFixed(1)} KGS
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -142,7 +178,7 @@ export default function OwnerDashboard() {
               <div className="font-mono text-xs text-muted uppercase tracking-widest">Recent Stock Entries</div>
               <span className="badge badge-inputer">Inputer</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
                 <thead><tr><th>Invoice</th><th>Supplier</th><th>KGS</th><th>Rate</th></tr></thead>
                 <tbody>
@@ -160,6 +196,28 @@ export default function OwnerDashboard() {
                 </tbody>
               </table>
             </div>
+            <div className="md:hidden data-card-list p-4">
+              {recentStock.length === 0 && (
+                <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                  No entries yet
+                </div>
+              )}
+              {recentStock.map((s: any) => (
+                <div key={s.id} className="data-card">
+                  <div className="data-card-header">
+                    <span className="data-card-title text-inputer">{s.invoice_number}</span>
+                    <span className="data-card-meta">{s.supplier_name}</span>
+                  </div>
+                  <div className="data-card-grid">
+                    <span className="data-card-label">KGS</span>
+                    <span className="font-mono text-inputer text-right">{s.tons_loaded} KGS</span>
+
+                    <span className="data-card-label">Rate</span>
+                    <span className="font-mono text-owner text-right">₹{s.rate_per_ton}/T</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="card overflow-hidden">
@@ -167,7 +225,7 @@ export default function OwnerDashboard() {
               <div className="font-mono text-xs text-muted uppercase tracking-widest">Recent Usage Entries</div>
               <span className="badge badge-chemist">Chemist</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
                 <thead><tr><th>Invoice</th><th>By</th><th>Used</th><th>Date</th></tr></thead>
                 <tbody>
@@ -184,6 +242,28 @@ export default function OwnerDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="md:hidden data-card-list p-4">
+              {recentUsage.length === 0 && (
+                <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                  No usage yet
+                </div>
+              )}
+              {recentUsage.map((u: any) => (
+                <div key={u.id} className="data-card">
+                  <div className="data-card-header">
+                    <span className="data-card-title text-chemist">{u.invoice_number}</span>
+                    <span className="data-card-meta">{new Date(u.usage_date).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <div className="data-card-grid">
+                    <span className="data-card-label">By</span>
+                    <span className="data-card-value">{u.profiles?.full_name ?? '—'}</span>
+
+                    <span className="data-card-label">Used</span>
+                    <span className="font-mono text-chemist text-right">{u.tons_used} KGS</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

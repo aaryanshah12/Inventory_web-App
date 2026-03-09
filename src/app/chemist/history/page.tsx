@@ -38,12 +38,14 @@ export default function ChemistHistoryPage() {
           actions={<Link href="/chemist/use" className="btn btn-chemist gap-2"><Plus size={15}/> Log Usage</Link>}
         />
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-chemist border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-chemist border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -78,8 +80,44 @@ export default function ChemistHistoryPage() {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden data-card-list p-4">
+                {entries.length === 0 && (
+                  <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
+                    No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                  </div>
+                )}
+                {entries.map(e => (
+                  <div key={e.id} className="data-card">
+                    <div className="data-card-header">
+                      <span className="data-card-title text-chemist">{e.invoice_number}</span>
+                      <span className="data-card-meta">{new Date(e.usage_date).toLocaleDateString('en-IN')}</span>
+                    </div>
+                    <div className="data-card-grid">
+                      <span className="data-card-label">Factory</span>
+                      <span className="data-card-value">{e.factories?.name ?? '—'}</span>
+
+                      <span className="data-card-label">KGS Used</span>
+                      <span className="font-mono text-chemist text-right">{e.tons_used} KGS</span>
+
+                      <span className="data-card-label">Process ID</span>
+                      <span className="text-muted text-right">{e.process_id ?? '—'}</span>
+
+                      <span className="data-card-label">Shift</span>
+                      <span className="text-right">
+                        {e.shift
+                          ? <span className={`badge ${shiftColors[e.shift] ?? 'badge-muted'} capitalize`}>{e.shift}</span>
+                          : <span className="text-muted">—</span>
+                        }
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </AppLayout>

@@ -7,6 +7,7 @@ export interface Factory {
   location: string | null
   is_active: boolean
   created_at: string
+  materials?: string[] | null
 }
 
 export interface Profile {

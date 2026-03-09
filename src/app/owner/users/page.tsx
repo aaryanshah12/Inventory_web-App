@@ -6,10 +6,12 @@ import { usersApi } from '@/lib/api'
 import { Profile } from '@/types'
 import clsx from 'clsx'
 import { UserCheck, UserX, Plus, CheckCircle, Pencil, X } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 
 const EMPTY_NEW_USER = { full_name: '', email: '', phone: '', role: 'inputer', password: '', factory_ids: [] as string[] }
 
 export default function OwnerUsersPage() {
+  const { profile, loading: authLoading } = useAuth()
   const [users, setUsers]           = useState<Profile[]>([])
   const [factories, setFactories]   = useState<any[]>([])
   const [pfMap, setPfMap]           = useState<Record<string, string[]>>({})
@@ -19,6 +21,8 @@ export default function OwnerUsersPage() {
   const [addError, setAddError]     = useState('')
   const [addSuccess, setAddSuccess] = useState('')
   const [newUser, setNewUser]       = useState(EMPTY_NEW_USER)
+  const [loadError, setLoadError]   = useState('')
+  const [assignedFactoryIds, setAssignedFactoryIds] = useState<string[]>([])
 
   // Edit modal state
   const [editUser, setEditUser]     = useState<Profile | null>(null)
@@ -26,16 +30,24 @@ export default function OwnerUsersPage() {
   const [editError, setEditError]   = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => {
+    if (!authLoading) { loadAll() }
+  }, [authLoading])
 
   async function loadAll() {
-    // Use the admin API route so profile_factories is readable regardless of RLS
+    if (authLoading) return
+    setLoading(true); setLoadError('')
     const data = await usersApi.getAll()
-    if (!data.error) {
-      setUsers(data.users ?? [])
-      setFactories(data.factories ?? [])
-      setPfMap(data.pfMap ?? {})
+    if (data.error) {
+      setLoadError(data.error)
+      setUsers([]); setFactories([]); setPfMap({})
+      setLoading(false)
+      return
     }
+    setUsers(data.users ?? [])
+    setFactories(data.factories ?? [])
+    setPfMap(data.pfMap ?? {})
+    setAssignedFactoryIds(data.assignedFactories ?? [])
     setLoading(false)
   }
 
@@ -155,6 +167,20 @@ export default function OwnerUsersPage() {
           }
         />
 
+        {loadError && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-300 mb-4">
+            {loadError}
+          </div>
+        )}
+
+        {!loading && !loadError && assignedFactoryIds.length === 0 && (
+          <div className="card p-6 mb-4">
+            <p className="text-sm text-muted">
+              You do not have any factories assigned yet. Ask the platform admin to assign factories to your account to manage users.
+            </p>
+          </div>
+        )}
+
         {/* Success banner */}
         {addSuccess && (
           <div className="flex items-center gap-3 bg-chemist/10 border border-chemist/30 rounded-xl px-5 py-3 mb-6 animate-fade-down">
@@ -258,7 +284,7 @@ export default function OwnerUsersPage() {
           </div>
         )}
 
-        {/* ─── USERS TABLE ───────────────────────────────── */}
+        {/* ─── USERS LIST ───────────────────────────────── */}
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             {loading ? (
@@ -273,24 +299,15 @@ export default function OwnerUsersPage() {
                 </button>
               </div>
             ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Contact</th>
-                    <th>Assigned Factories</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Mobile cards */}
+                <div className="md:hidden divide-y divide-border">
                   {users.map(user => (
-                    <tr key={user.id}>
-                      <td>
+                    <div key={user.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className={clsx(
-                            'w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0',
+                            'w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0',
                             user.role === 'owner'   ? 'bg-owner/15 text-owner'   :
                             user.role === 'inputer' ? 'bg-inputer/15 text-inputer' :
                                                       'bg-chemist/15 text-chemist'
@@ -298,42 +315,36 @@ export default function OwnerUsersPage() {
                             {user.full_name.charAt(0)}
                           </div>
                           <div>
-                            <div className="text-sm text-primary font-medium whitespace-nowrap">{user.full_name}</div>
+                            <div className="text-sm text-primary font-semibold">{user.full_name}</div>
                             <div className="text-xs text-muted">{user.email}</div>
                           </div>
                         </div>
-                      </td>
-                      <td>
                         <span className={clsx('badge',
                           user.role === 'owner'   ? 'badge-owner'   :
                           user.role === 'inputer' ? 'badge-inputer' : 'badge-chemist'
                         )}>
                           {user.role}
                         </span>
-                      </td>
-                      <td className="text-muted text-xs whitespace-nowrap">{user.phone ?? '—'}</td>
-                      <td>
-                        <div className="flex flex-wrap gap-1">
-                          {(pfMap[user.id] ?? []).length === 0 ? (
-                            <span className="text-xs text-muted italic">None assigned</span>
-                          ) : (
-                            factories
-                              .filter(f => (pfMap[user.id] ?? []).includes(f.id))
-                              .map(f => (
-                                <span key={f.id} className="text-[10px] font-mono px-2 py-0.5 rounded bg-owner/15 text-owner border border-owner/30 whitespace-nowrap">
-                                  {f.name}
-                                </span>
-                              ))
-                          )}
-                        </div>
-                      </td>
-                      <td>
+                      </div>
+                      <div className="text-xs text-muted">{user.phone ?? 'No phone'}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {(pfMap[user.id] ?? []).length === 0 ? (
+                          <span className="text-[11px] text-muted italic">No factories assigned</span>
+                        ) : (
+                          factories
+                            .filter(f => (pfMap[user.id] ?? []).includes(f.id))
+                            .map(f => (
+                              <span key={f.id} className="text-[10px] font-mono px-2 py-0.5 rounded bg-owner/15 text-owner border border-owner/30 whitespace-nowrap">
+                                {f.name}
+                              </span>
+                            ))
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
                         <span className={clsx('badge', user.is_active ? 'badge-chemist' : 'badge-muted')}>
                           {user.is_active ? '● Active' : '○ Inactive'}
                         </span>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
+                        <div className="ml-auto flex items-center gap-2">
                           <button
                             onClick={() => openEdit(user)}
                             className="btn btn-ghost text-xs py-1.5 px-3 gap-1 whitespace-nowrap"
@@ -351,11 +362,96 @@ export default function OwnerUsersPage() {
                             }
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                {/* Desktop table */}
+                <table className="data-table hidden md:table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Role</th>
+                      <th>Contact</th>
+                      <th>Assigned Factories</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(user => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className={clsx(
+                              'w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0',
+                              user.role === 'owner'   ? 'bg-owner/15 text-owner'   :
+                              user.role === 'inputer' ? 'bg-inputer/15 text-inputer' :
+                                                        'bg-chemist/15 text-chemist'
+                            )}>
+                              {user.full_name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-sm text-primary font-medium whitespace-nowrap">{user.full_name}</div>
+                              <div className="text-xs text-muted">{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={clsx('badge',
+                            user.role === 'owner'   ? 'badge-owner'   :
+                            user.role === 'inputer' ? 'badge-inputer' : 'badge-chemist'
+                          )}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="text-muted text-xs whitespace-nowrap">{user.phone ?? '—'}</td>
+                        <td>
+                          <div className="flex flex-wrap gap-1">
+                            {(pfMap[user.id] ?? []).length === 0 ? (
+                              <span className="text-xs text-muted italic">None assigned</span>
+                            ) : (
+                              factories
+                                .filter(f => (pfMap[user.id] ?? []).includes(f.id))
+                                .map(f => (
+                                  <span key={f.id} className="text-[10px] font-mono px-2 py-0.5 rounded bg-owner/15 text-owner border border-owner/30 whitespace-nowrap">
+                                    {f.name}
+                                  </span>
+                                ))
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={clsx('badge', user.is_active ? 'badge-chemist' : 'badge-muted')}>
+                            {user.is_active ? '● Active' : '○ Inactive'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEdit(user)}
+                              className="btn btn-ghost text-xs py-1.5 px-3 gap-1 whitespace-nowrap"
+                              title="Edit user"
+                            >
+                              <Pencil size={12}/> Edit
+                            </button>
+                            <button
+                              onClick={() => toggleActive(user)}
+                              className={clsx('btn text-xs py-1.5 px-3 whitespace-nowrap', user.is_active ? 'btn-danger' : 'btn-chemist')}
+                            >
+                              {user.is_active
+                                ? <><UserX size={12}/> Deactivate</>
+                                : <><UserCheck size={12}/> Activate</>
+                              }
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </div>

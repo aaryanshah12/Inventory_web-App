@@ -1,13 +1,56 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import type { NextRequest } from 'next/server'
 
-// GET /api/factories — Fetch all factories + their assigned users (bypasses RLS)
-export async function GET() {
+// GET /api/factories — Only return factories the signed-in owner can access
+export async function GET(request: NextRequest) {
   try {
-    const [{ data: factories, error }, { data: pfRows }, { data: profiles }] = await Promise.all([
-      supabaseAdmin.from('factories').select('*').order('created_at', { ascending: true }),
-      supabaseAdmin.from('profile_factories').select('profile_id, factory_id'),
-      supabaseAdmin.from('profiles').select('id, full_name, role, is_active').order('full_name'),
+    // Bearer token (preferred) -> fallback to cookies
+    const authHeader = request.headers.get('authorization')
+    const bearer = authHeader?.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null
+
+    let userId: string | null = null
+
+    if (bearer) {
+      const { data, error } = await supabaseAdmin.auth.getUser(bearer)
+      if (error || !data?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = data.user.id
+    } else {
+      const supabase = createRouteHandlerClient({ cookies })
+      const { data: auth } = await supabase.auth.getUser()
+      userId = auth?.user?.id ?? null
+    }
+
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: ownerProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('id', userId)
+      .single()
+
+    if (!ownerProfile || ownerProfile.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { data: ownerFactories } = await supabaseAdmin
+      .from('profile_factories')
+      .select('factory_id')
+      .eq('profile_id', userId)
+
+    const allowedFactoryIds = (ownerFactories ?? []).map((r: any) => r.factory_id).filter(Boolean)
+
+    if (allowedFactoryIds.length === 0) {
+      return NextResponse.json({ factories: [], profiles: [], factoryUsersMap: {}, assignedFactories: [] })
+    }
+
+    const [{ data: factories, error }, { data: pfRows }] = await Promise.all([
+      supabaseAdmin.from('factories').select('*').in('id', allowedFactoryIds).order('created_at', { ascending: true }),
+      supabaseAdmin.from('profile_factories').select('profile_id, factory_id').in('factory_id', allowedFactoryIds),
     ])
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -19,7 +62,18 @@ export async function GET() {
       factoryUsersMap[r.factory_id].push(r.profile_id)
     })
 
-    return NextResponse.json({ factories: factories ?? [], profiles: profiles ?? [], factoryUsersMap })
+    const profileIds = Array.from(new Set((pfRows ?? []).map((r: any) => r.profile_id)))
+
+    const { data: profiles } = profileIds.length > 0
+      ? await supabaseAdmin.from('profiles').select('id, full_name, role, is_active').in('id', profileIds).order('full_name')
+      : { data: [] }
+
+    return NextResponse.json({
+      factories: factories ?? [],
+      profiles: profiles ?? [],
+      factoryUsersMap,
+      assignedFactories: allowedFactoryIds
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
@@ -29,13 +83,13 @@ export async function GET() {
 // POST /api/factories — Create new factory
 export async function POST(request: Request) {
   try {
-    const { name, location } = await request.json()
+    const { name, location, materials } = await request.json()
 
     if (!name) return NextResponse.json({ error: 'Factory name is required' }, { status: 400 })
 
     const { data, error } = await supabaseAdmin
       .from('factories')
-      .insert({ name, location: location || null })
+      .insert({ name, location: location || null, materials: materials ?? null })
       .select()
       .single()
 
@@ -50,7 +104,7 @@ export async function POST(request: Request) {
 // PATCH /api/factories — Update factory
 export async function PATCH(request: Request) {
   try {
-    const { id, name, location, is_active } = await request.json()
+    const { id, name, location, is_active, materials } = await request.json()
 
     if (!id) return NextResponse.json({ error: 'Factory ID required' }, { status: 400 })
 
@@ -58,6 +112,7 @@ export async function PATCH(request: Request) {
     if (name      !== undefined) updates.name      = name
     if (location  !== undefined) updates.location  = location || null
     if (is_active !== undefined) updates.is_active = is_active
+    if (materials !== undefined) updates.materials = materials ?? null
 
     const { error } = await supabaseAdmin
       .from('factories')
