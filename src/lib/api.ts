@@ -11,8 +11,16 @@ async function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = data.session?.access_token
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
 async function call(url: string, method: string, body: object): Promise<ApiResponse> {
-  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
+  const headers = await authHeaders()
   const res = await fetch(url, {
     method,
     headers,
