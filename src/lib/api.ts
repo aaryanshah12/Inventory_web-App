@@ -1,18 +1,18 @@
-// Shared helper to call our secure API routes
-// All database writes go through these functions instead of direct Supabase calls
-
 import { supabase } from './supabase'
 
 type ApiResponse = { success?: boolean; error?: string; [key: string]: any }
 
-async function authHeaders() {
+async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  const headers: Record<string, string> = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
 }
 
 async function call(url: string, method: string, body: object): Promise<ApiResponse> {
-  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
+  const auth = await authHeaders() // typed as Record<string, string>
+  const headers: HeadersInit = { 'Content-Type': 'application/json', ...auth }
   const res = await fetch(url, {
     method,
     headers,
@@ -24,8 +24,8 @@ async function call(url: string, method: string, body: object): Promise<ApiRespo
 // ─── USERS ────────────────────────────────────────────────
 export const usersApi = {
   getAll: async () => {
-    const headers = await authHeaders()
-    return fetch("/api/users", { headers }).then(r => r.json())
+    const headers: HeadersInit = await authHeaders()
+    return fetch('/api/users', { headers }).then(r => r.json())
   },
 
   create: (data: { email: string; password: string; full_name: string; role: string; phone?: string; factory_ids?: string[] }) =>
@@ -41,7 +41,7 @@ export const usersApi = {
 // ─── FACTORIES ────────────────────────────────────────────
 export const factoriesApi = {
   getAll: async () => {
-    const headers = await authHeaders()
+    const headers: HeadersInit = await authHeaders()
     return fetch('/api/factories', { headers }).then(r => r.json())
   },
 
