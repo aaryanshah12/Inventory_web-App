@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { usageApi } from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
-import { CheckCircle, Search, Lock, Hash, CalendarDays } from 'lucide-react'
+import { CheckCircle, Search, Lock, Hash, CalendarDays, Plus, Trash2 } from 'lucide-react'
 
 type LookupMode = 'inv' | 'date'
 
@@ -16,7 +16,6 @@ export default function ChemistUsagePage() {
   const [form, setForm] = useState({
     factory_id:     '',
     invoice_number: '',
-    tons_used:      '',
     process_id:     '',
     batch_notes:    '',
     shift:          '',
@@ -34,6 +33,16 @@ export default function ChemistUsagePage() {
   const [lookupDate, setLookupDate]       = useState(new Date().toISOString().split('T')[0])
   const [dateInvoices, setDateInvoices]   = useState<any[]>([])
   const [dateLoading, setDateLoading]     = useState(false)
+
+  // Multiple invoice selection
+  const [selections, setSelections] = useState<Array<{
+    invoice_number: string
+    factory_id: string
+    material_type: string
+    supplier_name: string
+    tons_remaining: number
+    tons_used: string
+  }>>([])
 
   useEffect(() => {
     if (profile?.factories) {
@@ -106,22 +115,71 @@ export default function ChemistUsagePage() {
     setInvoiceError('')
   }
 
+  function addInvoiceToSelections() {
+    if (!invoiceInfo) return
+    if (Number(invoiceInfo.tons_remaining) <= 0) {
+      setInvoiceError('This invoice has no remaining stock.')
+      return
+    }
+    if (selections.some(s => s.invoice_number === invoiceInfo.invoice_number)) {
+      setInvoiceError('Invoice already added to the list.')
+      return
+    }
+    setSelections(prev => [
+      ...prev,
+      {
+        invoice_number: invoiceInfo.invoice_number,
+        factory_id:     invoiceInfo.factory_id,
+        material_type:  invoiceInfo.material_type,
+        supplier_name:  invoiceInfo.supplier_name,
+        tons_remaining: Number(invoiceInfo.tons_remaining),
+        tons_used:      '',
+      }
+    ])
+    setInvoiceInfo(null)
+    setForm(f => ({ ...f, invoice_number: '' }))
+    setInvoiceError('')
+  }
+
+  function removeSelection(invoice_number: string) {
+    setSelections(prev => prev.filter(s => s.invoice_number !== invoice_number))
+  }
+
+  function updateSelectionAmount(invoice_number: string, value: string) {
+    setSelections(prev => prev.map(s => s.invoice_number === invoice_number ? { ...s, tons_used: value } : s))
+  }
+
+  const hasInvalidAmounts = selections.some(s =>
+    !s.tons_used ||
+    Number(s.tons_used) <= 0 ||
+    Number(s.tons_used) > Number(s.tons_remaining)
+  )
+  const totalUsed = selections.reduce((sum, s) => sum + (Number(s.tons_used) || 0), 0)
+
   // ── Submit ───────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!invoiceInfo) { setError('Please look up a valid invoice first.'); return }
+    if (selections.length === 0) { setError('Add at least one invoice to use.'); return }
+
+    const invalid = selections.some(s => !s.tons_used || Number(s.tons_used) <= 0 || Number(s.tons_used) > Number(s.tons_remaining))
+    if (invalid) { setError('Please enter valid KGS for each invoice.'); return }
+
     setLoading(true); setError('')
 
-    const result = await usageApi.create({
-      factory_id:     form.factory_id || invoiceInfo.factory_id,
-      invoice_number: form.invoice_number,
-      tons_used:      Number(form.tons_used),
-      process_id:     form.process_id  || undefined,
-      batch_notes:    form.batch_notes || undefined,
-      shift:          form.shift       || undefined,
-      usage_date:     form.usage_date,
-      created_by:     profile!.id,
-    })
+    const payload = {
+      usages: selections.map(s => ({
+        factory_id:     s.factory_id || form.factory_id,
+        invoice_number: s.invoice_number,
+        tons_used:      Number(s.tons_used),
+      })),
+      process_id:  form.process_id  || undefined,
+      batch_notes: form.batch_notes || undefined,
+      shift:       form.shift       || undefined,
+      usage_date:  form.usage_date,
+      created_by:  profile!.id,
+    }
+
+    const result = await usageApi.createBatch(payload)
 
     if (result.error) { setError(result.error); setLoading(false); return }
     setSuccess(true)
@@ -286,6 +344,17 @@ export default function ChemistUsagePage() {
                     </div>
                   ))}
                 </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={addInvoiceToSelections}
+                    className="btn btn-chemist px-4 py-2"
+                    disabled={Number(invoiceInfo.tons_remaining) <= 0}
+                  >
+                    <Plus size={14}/> Add to usage list
+                  </button>
+                  <div className="text-[11px] text-muted">It will appear in Step 2 below</div>
+                </div>
                 <div className="mt-2 text-[10px] text-muted font-mono">Rate & cost information is hidden from this view</div>
               </div>
             )}
@@ -297,18 +366,62 @@ export default function ChemistUsagePage() {
               <span>⚗</span> Step 2 — Enter Usage Details
             </div>
 
-            <div>
-              <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">KGS Used *</label>
-              <input
-                type="number" step="0.001" min="0.001"
-                max={invoiceInfo?.tons_remaining ?? undefined}
-                className="input-field chemist-focus"
-                value={form.tons_used}
-                onChange={e => update('tons_used', e.target.value)}
-                required placeholder="e.g. 2.500"
-              />
-              {invoiceInfo && form.tons_used && Number(form.tons_used) > Number(invoiceInfo.tons_remaining) && (
-                <div className="text-red-400 text-xs mt-1">Exceeds available stock!</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block font-mono text-xs text-muted uppercase tracking-widest">Selected Invoices</label>
+                <span className="text-xs text-muted">{selections.length} added</span>
+              </div>
+
+              {selections.length === 0 && (
+                <div className="text-sm text-muted bg-layer-sm border border-border rounded-lg px-4 py-3">
+                  Add invoices in Step 1 to allocate usage amounts.
+                </div>
+              )}
+
+              {selections.length > 0 && (
+                <div className="space-y-3">
+                  {selections.map(sel => (
+                    <div key={sel.invoice_number} className="border border-border rounded-lg p-4 bg-layer-sm space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-mono text-sm text-chemist">{sel.invoice_number}</div>
+                          <div className="text-xs text-muted">{sel.supplier_name} · {sel.material_type}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[11px] text-muted uppercase">Available</div>
+                          <div className="font-mono font-bold text-chemist">{Number(sel.tons_remaining).toFixed(3)} KGS</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number" step="0.001" min="0.001"
+                          max={sel.tons_remaining}
+                          className="input-field chemist-focus"
+                          value={sel.tons_used}
+                          onChange={e => updateSelectionAmount(sel.invoice_number, e.target.value)}
+                          placeholder="KGS to use"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSelection(sel.invoice_number)}
+                          className="btn btn-ghost text-red-400 border-red-500/30 hover:text-red-300 hover:border-red-500/50"
+                        >
+                          <Trash2 size={14}/> Remove
+                        </button>
+                      </div>
+
+                      {sel.tons_used && Number(sel.tons_used) > Number(sel.tons_remaining) && (
+                        <div className="text-red-400 text-xs">Exceeds available stock.</div>
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between text-xs text-muted font-mono">
+                    <span>Total to consume</span>
+                    <span className="text-chemist font-semibold">{totalUsed.toFixed(3)} KGS</span>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -344,7 +457,11 @@ export default function ChemistUsagePage() {
           )}
 
           <div className="flex gap-3">
-            <button type="submit" disabled={loading || !invoiceInfo} className="btn btn-chemist flex-1 justify-center py-3 text-base">
+            <button
+              type="submit"
+              disabled={loading || selections.length === 0 || hasInvalidAmounts}
+              className="btn btn-chemist flex-1 justify-center py-3 text-base"
+            >
               {loading ? 'Saving...' : '✓ Submit Usage'}
             </button>
             <button type="button" onClick={() => router.back()} className="btn btn-ghost px-6">Cancel</button>

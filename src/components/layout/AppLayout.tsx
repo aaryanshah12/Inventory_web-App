@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Package, FlaskConical,
   Factory, BarChart3, LogOut, ChevronRight,
-  Users, Shield, Menu, X
+  Users, Shield, Menu, X, Sun, Moon
 } from 'lucide-react'
 
 interface NavItem { href: string; label: string; icon: React.ReactNode }
@@ -52,8 +52,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role     = profile?.role ?? 'chemist'
   const navItems = navByRole[role]
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark'
+    const saved = (localStorage.getItem('theme') as 'dark' | 'light' | null) ?? 'dark'
+    if (typeof document !== 'undefined') document.documentElement.dataset.theme = saved
+    return saved
+  })
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
+
+  // Theme persistence
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
   async function handleSignOut() {
     await signOut()
@@ -63,6 +76,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   function navigate(href: string) {
     setSidebarOpen(false)
     router.push(href)
+  }
+
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark')
   }
 
   const accentText = role === 'owner' ? 'text-owner' : role === 'inputer' ? 'text-inputer' : 'text-chemist'
@@ -79,14 +96,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             className={clsx(
               'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-150 group',
               active
-                ? clsx('text-white font-medium',
+                ? clsx('text-primary font-medium',
                     role === 'owner'   ? 'bg-owner/15 border border-owner/30' :
                     role === 'inputer' ? 'bg-inputer/15 border border-inputer/30' :
                                          'bg-chemist/15 border border-chemist/30')
-                : 'text-muted hover:text-white hover:bg-white/5'
+                : 'text-muted hover:text-primary hover:bg-layer-sm'
             )}
           >
-            <span className={active ? accentText : 'text-muted group-hover:text-white'}>
+            <span className={active ? accentText : 'text-muted group-hover:text-primary'}>
               {item.icon}
             </span>
             {item.label}
@@ -104,15 +121,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3">
           <span className="text-2xl">⚗️</span>
           <div>
-            <div className="font-display text-lg font-bold text-white tracking-wider uppercase">
+            <div className="font-display text-lg font-bold text-primary tracking-wider uppercase">
               Chem<span className={accentText}>Factory</span>
             </div>
             <div className="font-mono text-[10px] text-muted tracking-widest">MANAGEMENT PORTAL</div>
           </div>
         </div>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-muted hover:text-white p-1">
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="text-muted hover:text-primary p-2 border border-border rounded-lg bg-layer-sm"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+          </button>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-muted hover:text-primary p-1">
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Profile */}
@@ -122,7 +148,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {profile?.full_name?.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-white truncate">{profile?.full_name}</div>
+              <div className="text-sm font-semibold text-primary truncate">{profile?.full_name}</div>
             <div className="font-mono text-[10px] uppercase tracking-widest opacity-70">{role}</div>
           </div>
         </div>
@@ -137,7 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {profile.factories.slice(0, 3).map((f: any) => (
             <div key={f.id} className="flex items-center gap-2 py-1">
               <div className={clsx('w-1.5 h-1.5 rounded-full', accentBg)} />
-              <span className="text-xs text-white/70 truncate">{f.name}</span>
+              <span className="text-xs text-muted truncate">{f.name}</span>
             </div>
           ))}
         </div>
@@ -179,14 +205,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile top bar */}
         <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-panel border-b border-border">
-          <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-white p-2">
+          <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-primary p-2">
             <Menu size={22} />
           </button>
-          <div className="font-display text-base font-bold text-white tracking-wider uppercase">
+          <div className="font-display text-base font-bold text-primary tracking-wider uppercase">
             Chem<span className={accentText}>Factory</span>
           </div>
-          <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold', roleColors[role])}>
-            {profile?.full_name?.charAt(0).toUpperCase() ?? '?'}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="text-muted hover:text-primary p-2 border border-border rounded-lg bg-layer-sm"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+            </button>
+            <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold', roleColors[role])}>
+              {profile?.full_name?.charAt(0).toUpperCase() ?? '?'}
+            </div>
           </div>
         </div>
 

@@ -21,7 +21,7 @@ export default function PageHeader({ title, subtitle, actions, accent = 'inputer
           <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-1">
             {subtitle ?? 'Overview'}
           </div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-white uppercase tracking-wide">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-primary uppercase tracking-wide">
             {title}
           </h1>
           <div className={`h-0.5 w-16 mt-2 rounded-full bg-current ${accentColors[accent]}`} />

@@ -42,10 +42,8 @@ export default function PermissionsPage() {
       return
     }
 
-    const accessibleUsers: Profile[] = (data.users ?? []).filter(
-      (u: Profile) => u.role !== 'owner'
-    )
-    const userIds = accessibleUsers.map((u: Profile) => u.id)
+    const accessibleUsers = (data.users ?? []).filter((u: Profile) => u.role !== 'owner')
+    const userIds = accessibleUsers.map(u => u.id)
     let overrideRows: PermissionOverride[] = []
     if (userIds.length > 0) {
       const { data: o } = await supabase.from('permission_overrides').select('*').in('profile_id', userIds)
