@@ -22,7 +22,7 @@ export default function OwnerUsagePage() {
       }
       const [e, f] = await Promise.all([
         supabase.from('usage_entries')
-          .select('*, factories(name), profiles(full_name), stock_entries(supplier_name, material_type, tons_loaded)')
+          .select('*, factories(name), profiles(full_name)')
           .in('factory_id', factoryIds)
           .order('created_at', { ascending: false }),
         supabase.from('factories').select('id, name').in('id', factoryIds),
@@ -32,12 +32,26 @@ export default function OwnerUsagePage() {
       // Fetch remaining/loaded for each invoice
       const invNums = Array.from(new Set(entryList.map((x: any) => x.invoice_number).filter(Boolean)))
       const balMap: Record<string, { tons_remaining: number | null; tons_loaded: number | null }> = {}
+      let stockMap: Record<string, { supplier_name: string | null; material_type: string | null; tons_loaded: number | null }> = {}
       if (invNums.length > 0) {
-        const { data: bals } = await supabase
-          .from('stock_balance')
-          .select('invoice_number, tons_remaining, tons_loaded')
-          .in('invoice_number', invNums)
+        const [{ data: bals }, { data: stocks }] = await Promise.all([
+          supabase
+            .from('stock_balance')
+            .select('invoice_number, tons_remaining, tons_loaded')
+            .in('invoice_number', invNums),
+          supabase
+            .from('stock_entries_safe')
+            .select('invoice_number, supplier_name, material_type, tons_loaded')
+            .in('invoice_number', invNums),
+        ])
         ;(bals ?? []).forEach((b: any) => { balMap[b.invoice_number] = { tons_remaining: b.tons_remaining, tons_loaded: b.tons_loaded } })
+        stockMap = Object.fromEntries(
+          (stocks ?? []).map((s: any) => [s.invoice_number, {
+            supplier_name: s.supplier_name,
+            material_type: s.material_type,
+            tons_loaded: s.tons_loaded,
+          }])
+        )
       }
 
       // Compute remaining after each usage entry (per invoice)
@@ -57,7 +71,7 @@ export default function OwnerUsagePage() {
         })
 
         const totalLoaded =
-          Number(list[0]?.stock_entries?.tons_loaded) ||
+          Number(stockMap[inv]?.tons_loaded) ||
           Number(balMap[inv]?.tons_loaded) ||
           (balMap[inv]?.tons_remaining !== undefined && balMap[inv]?.tons_remaining !== null
             ? Number(balMap[inv]?.tons_remaining) + list.reduce((s, x) => s + Number(x.tons_used || 0), 0)
@@ -72,6 +86,7 @@ export default function OwnerUsagePage() {
 
       setEntries(entryList.map((e: any) => ({
         ...e,
+        stock_entries: stockMap[e.invoice_number] ?? null,
         kgs_remaining: remainingById[e.id] ?? balMap[e.invoice_number]?.tons_remaining ?? null,
       })))
       setFactories(f.data ?? [])
@@ -110,7 +125,10 @@ export default function OwnerUsagePage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Invoice No.</th>
+                      <th>Supplier / Product</th>
+                      <th>Invoice</th>
+                      <th>Batch ID</th>
+                      <th>Batch Month</th>
                       <th>Factory</th>
                       <th>Chemist</th>
                       <th>Material</th>
@@ -125,7 +143,13 @@ export default function OwnerUsagePage() {
                       const remaining = e.kgs_remaining
                       return (
                         <tr key={e.id}>
+                          <td>
+                            <div className="text-chemist font-semibold text-sm">{e.stock_entries?.supplier_name ?? '—'}</div>
+                            <div className="text-primary text-xs">{e.stock_entries?.material_type ?? '—'}</div>
+                          </td>
                           <td className="font-mono text-chemist text-xs">{e.invoice_number}</td>
+                          <td className="text-xs text-primary">{e.batch_id ?? '—'}</td>
+                          <td className="text-xs text-primary">{e.batch_month ?? '—'}</td>
                           <td className="text-primary text-xs">{e.factories?.name}</td>
                           <td className="text-primary">{e.profiles?.full_name}</td>
                           <td className="text-muted">{e.stock_entries?.material_type}</td>
@@ -156,7 +180,11 @@ export default function OwnerUsagePage() {
                   return (
                     <div key={e.id} className="data-card">
                       <div className="data-card-header">
-                        <span className="data-card-title text-chemist">{e.invoice_number}</span>
+                        <div>
+                          <div className="text-chemist font-semibold text-sm">{e.stock_entries?.supplier_name ?? '—'}</div>
+                          <div className="text-primary text-xs">{e.stock_entries?.material_type ?? '—'}</div>
+                          <div className="data-card-title font-mono text-[11px] text-muted">{e.invoice_number}</div>
+                        </div>
                         <span className="data-card-meta">{new Date(e.usage_date).toLocaleDateString('en-IN')}</span>
                       </div>
                       <div className="data-card-grid">
@@ -168,6 +196,12 @@ export default function OwnerUsagePage() {
 
                         <span className="data-card-label">Material</span>
                         <span className="text-muted text-right">{e.stock_entries?.material_type ?? '—'}</span>
+
+                        <span className="data-card-label">Batch ID</span>
+                        <span className="text-primary text-right">{e.batch_id ?? '—'}</span>
+
+                        <span className="data-card-label">Batch Month</span>
+                        <span className="text-primary text-right">{e.batch_month ?? '—'}</span>
 
                         <span className="data-card-label">Used</span>
                         <span className="font-mono text-chemist text-right">{e.tons_used} KGS</span>

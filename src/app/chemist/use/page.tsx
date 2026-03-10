@@ -9,6 +9,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { CheckCircle, Search, Lock, Hash, CalendarDays, Plus, Trash2 } from 'lucide-react'
 
 type LookupMode = 'inv' | 'date'
+const months = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+]
 
 export default function ChemistUsagePage() {
   const { profile } = useAuth()
@@ -20,6 +24,8 @@ export default function ChemistUsagePage() {
     batch_notes:    '',
     shift:          '',
     usage_date:     new Date().toISOString().split('T')[0],
+    batch_month:    new Date().toLocaleString('en-US', { month: 'long' }),
+    batch_id:       '',
   })
   const [factories, setFactories]         = useState<any[]>([])
   const [invoiceInfo, setInvoiceInfo]     = useState<any>(null)
@@ -163,6 +169,7 @@ export default function ChemistUsagePage() {
 
     const invalid = selections.some(s => !s.tons_used || Number(s.tons_used) <= 0 || Number(s.tons_used) > Number(s.tons_remaining))
     if (invalid) { setError('Please enter valid KGS for each invoice.'); return }
+    if (!form.batch_month || !form.batch_id.trim()) { setError('Batch month and Batch ID are required.'); return }
 
     setLoading(true); setError('')
 
@@ -176,6 +183,8 @@ export default function ChemistUsagePage() {
       batch_notes: form.batch_notes || undefined,
       shift:       form.shift       || undefined,
       usage_date:  form.usage_date,
+      batch_month: form.batch_month,
+      batch_id:    form.batch_id.trim(),
       created_by:  profile!.id,
     }
 
@@ -296,8 +305,9 @@ export default function ChemistUsagePage() {
                         className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-border hover:border-chemist/40 hover:bg-chemist/5 transition-all text-left"
                       >
                         <div>
-                          <div className="font-mono text-sm text-chemist">{inv.invoice_number}</div>
-                          <div className="text-xs text-muted mt-0.5">{inv.supplier_name} · {inv.material_type}</div>
+                      <div className="text-sm font-semibold text-chemist">{inv.supplier_name}</div>
+                      <div className="text-xs text-primary">{inv.material_type}</div>
+                      <div className="font-mono text-[11px] text-muted mt-0.5">{inv.invoice_number}</div>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <div className="text-xs text-muted">Available</div>
@@ -319,10 +329,14 @@ export default function ChemistUsagePage() {
             {/* Invoice info card — shown after selection either way */}
             {invoiceInfo && (
               <div className="mt-4 bg-chemist/8 border border-chemist/25 rounded-lg p-4 animate-fade-up">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle size={14} className="text-chemist" />
-                  <span className="font-mono text-xs text-chemist uppercase tracking-widest">Invoice Selected</span>
-                  <Lock size={11} className="text-muted ml-auto" />
+                <div className="flex items-start gap-3 mb-3">
+                  <CheckCircle size={14} className="text-chemist mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-chemist">{invoiceInfo.supplier_name}</div>
+                    <div className="text-xs text-primary">{invoiceInfo.material_type}</div>
+                    <div className="font-mono text-[11px] text-muted mt-0.5">{invoiceInfo.invoice_number}</div>
+                  </div>
+                  <Lock size={11} className="text-muted mt-1" />
                   <button
                     type="button"
                     onClick={() => { setInvoiceInfo(null); setForm(f => ({ ...f, invoice_number: '' })) }}
@@ -331,9 +345,9 @@ export default function ChemistUsagePage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    ['Invoice',    invoiceInfo.invoice_number],
                     ['Supplier',   invoiceInfo.supplier_name],
                     ['Material',   invoiceInfo.material_type],
+                    ['Invoice',    invoiceInfo.invoice_number],
                     ['Total Load', `${invoiceInfo.tons_loaded} KGS`],
                     ['Date',       new Date(invoiceInfo.entry_date + 'T00:00:00').toLocaleDateString('en-IN')],
                     ['Available',  `${Number(invoiceInfo.tons_remaining).toFixed(3)} KGS`],
@@ -384,8 +398,9 @@ export default function ChemistUsagePage() {
                     <div key={sel.invoice_number} className="border border-border rounded-lg p-4 bg-layer-sm space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="font-mono text-sm text-chemist">{sel.invoice_number}</div>
-                          <div className="text-xs text-muted">{sel.supplier_name} · {sel.material_type}</div>
+                          <div className="text-sm font-semibold text-chemist">{sel.supplier_name}</div>
+                          <div className="text-xs text-primary">{sel.material_type}</div>
+                          <div className="font-mono text-[11px] text-muted mt-0.5">{sel.invoice_number}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-[11px] text-muted uppercase">Available</div>
@@ -438,6 +453,28 @@ export default function ChemistUsagePage() {
               <div>
                 <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">Usage Date *</label>
                 <input type="date" className="input-field chemist-focus" value={form.usage_date} onChange={e => update('usage_date', e.target.value)} required />
+              </div>
+              <div>
+                <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">Batch Month *</label>
+                <select
+                  className="input-field chemist-focus"
+                  value={form.batch_month}
+                  onChange={e => update('batch_month', e.target.value)}
+                  required
+                >
+                  <option value="">Select month</option>
+                  {months.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-2">Batch ID *</label>
+                <input
+                  className="input-field chemist-focus"
+                  value={form.batch_id}
+                  onChange={e => update('batch_id', e.target.value)}
+                  placeholder="Enter batch ID"
+                  required
+                />
               </div>
             </div>
 

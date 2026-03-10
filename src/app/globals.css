@@ -1,14 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ── FONT VARS ───────────────────────────────────── */
 :root {
-  --font-rajdhani: 'Rajdhani', sans-serif;
-  --font-share-tech-mono: 'Share Tech Mono', monospace;
-  --font-exo2: 'Exo 2', sans-serif;
+  --font-rajdhani: 'Times New Roman', serif;
+  --font-share-tech-mono: 'Times New Roman', serif;
+  --font-exo2: 'Times New Roman', serif;
 }
 
 /* ── DARK THEME (default) ────────────────────────── */
@@ -67,7 +65,7 @@ html { transition: background 0.25s, color 0.25s; }
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Exo 2', sans-serif;
+  font-family: 'Times New Roman', serif;
   min-height: 100vh;
 }
 

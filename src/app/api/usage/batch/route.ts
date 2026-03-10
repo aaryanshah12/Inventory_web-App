@@ -15,10 +15,15 @@ export async function POST(request: Request) {
       batch_notes,
       shift,
       usage_date,
+      batch_month,
+      batch_id,
       created_by,
     } = await request.json()
 
-    if (!Array.isArray(usages) || usages.length === 0 || !created_by) {
+    const normalizedMonth = String(batch_month ?? '').trim()
+    const normalizedBatchId = String(batch_id ?? '').trim()
+
+    if (!Array.isArray(usages) || usages.length === 0 || !created_by || !normalizedMonth || !normalizedBatchId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -68,6 +73,8 @@ export async function POST(request: Request) {
       batch_notes: batch_notes || null,
       shift:       shift       || null,
       usage_date:  usage_date  || new Date().toISOString().split('T')[0],
+      batch_month: normalizedMonth,
+      batch_id:    normalizedBatchId,
       created_by,
     }))
 

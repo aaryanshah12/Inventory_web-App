@@ -20,12 +20,27 @@ export default function ChemistDashboard() {
     async function load() {
       const [b, u] = await Promise.all([
         supabase.from('stock_balance').select('*').in('factory_id', factoryIds),
-        supabase.from('usage_entries').select('*, factories(name)')
-          .eq('created_by', profile!.id)
-          .order('created_at', { ascending: false }).limit(6),
+        supabase.from('usage_entries').select('*, factories(name)').eq('created_by', profile!.id).order('created_at', { ascending: false }).limit(6),
       ])
+
+      const usageList = u.data ?? []
+      const invNums = Array.from(new Set(usageList.map((x: any) => x.invoice_number).filter(Boolean)))
+      let stockMap: Record<string, { supplier_name: string | null; material_type: string | null }> = {}
+      if (invNums.length > 0) {
+        const { data: stocks } = await supabase
+          .from('stock_entries_safe')
+          .select('invoice_number, supplier_name, material_type')
+          .in('invoice_number', invNums)
+        stockMap = Object.fromEntries(
+          (stocks ?? []).map((s: any) => [s.invoice_number, { supplier_name: s.supplier_name, material_type: s.material_type }])
+        )
+      }
+
       setBalance(b.data ?? [])
-      setRecentUsage(u.data ?? [])
+      setRecentUsage(usageList.map((u: any) => ({
+        ...u,
+        stock_entries: stockMap[u.invoice_number] ?? null,
+      })))
       setLoading(false)
     }
     load()
@@ -138,11 +153,15 @@ export default function ChemistDashboard() {
             <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
                 <thead>
-                  <tr><th>Invoice</th><th>Factory</th><th>Used</th><th>Date</th></tr>
+                  <tr><th>Supplier / Product</th><th>Invoice</th><th>Factory</th><th>Used</th><th>Date</th></tr>
                 </thead>
                 <tbody>
                   {recentUsage.map(u => (
                     <tr key={u.id}>
+                      <td className="text-sm">
+                        <div className="text-chemist font-semibold">{u.stock_entries?.supplier_name ?? '—'}</div>
+                        <div className="text-primary text-xs">{u.stock_entries?.material_type ?? '—'}</div>
+                      </td>
                       <td className="font-mono text-chemist text-xs">{u.invoice_number}</td>
                       <td className="text-primary text-xs">{u.factories?.name}</td>
                       <td className="font-mono text-chemist">{u.tons_used} KGS</td>
@@ -166,7 +185,11 @@ export default function ChemistDashboard() {
               {recentUsage.map(u => (
                 <div key={u.id} className="data-card">
                   <div className="data-card-header">
-                    <span className="data-card-title text-chemist">{u.invoice_number}</span>
+                    <div>
+                      <div className="text-chemist font-semibold text-sm">{u.stock_entries?.supplier_name ?? '—'}</div>
+                      <div className="text-primary text-xs">{u.stock_entries?.material_type ?? '—'}</div>
+                      <div className="data-card-title font-mono text-[11px] text-muted">{u.invoice_number}</div>
+                    </div>
                     <span className="data-card-meta">{new Date(u.usage_date).toLocaleDateString('en-IN')}</span>
                   </div>
                   <div className="data-card-grid">

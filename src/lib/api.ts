@@ -82,7 +82,7 @@ export const usageApi = {
   createBatch: (data: {
     usages: Array<{ factory_id: string; invoice_number: string; tons_used: number }>;
     process_id?: string; batch_notes?: string; shift?: string;
-    usage_date?: string; created_by: string;
+    usage_date?: string; batch_month: string; batch_id: string; created_by: string;
   }) => call('/api/usage/batch', 'POST', data),
 
   delete: (id: string) =>

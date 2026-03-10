@@ -15,11 +15,32 @@ export default function ChemistHistoryPage() {
 
   useEffect(() => {
     if (!profile) return
-    supabase.from('usage_entries')
-      .select('*, factories(name)')
-      .eq('created_by', profile.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => { setEntries(data ?? []); setLoading(false) })
+    async function load() {
+      const { data: usage } = await supabase.from('usage_entries')
+        .select('*, factories(name)')
+        .eq('created_by', profile.id)
+        .order('created_at', { ascending: false })
+
+      const list = usage ?? []
+      const invNums = Array.from(new Set(list.map(u => u.invoice_number).filter(Boolean)))
+      let stockMap: Record<string, { supplier_name: string | null; material_type: string | null }> = {}
+      if (invNums.length > 0) {
+        const { data: stocks } = await supabase
+          .from('stock_entries_safe')
+          .select('invoice_number, supplier_name, material_type')
+          .in('invoice_number', invNums)
+        stockMap = Object.fromEntries(
+          (stocks ?? []).map((s: any) => [s.invoice_number, { supplier_name: s.supplier_name, material_type: s.material_type }])
+        )
+      }
+
+      setEntries(list.map(u => ({
+        ...u,
+        stock_entries: stockMap[u.invoice_number] ?? null,
+      })))
+      setLoading(false)
+    }
+    load()
   }, [profile])
 
   const shiftColors: Record<string, string> = {
@@ -49,7 +70,8 @@ export default function ChemistHistoryPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Invoice No.</th>
+                    <th>Supplier / Product</th>
+                    <th>Invoice</th>
                     <th>Factory</th>
                     <th>KGS Used</th>
                     <th>Process ID</th>
@@ -60,6 +82,10 @@ export default function ChemistHistoryPage() {
                 <tbody>
                   {entries.map(e => (
                     <tr key={e.id}>
+                      <td>
+                        <div className="text-chemist font-semibold text-sm">{e.stock_entries?.supplier_name ?? '—'}</div>
+                        <div className="text-primary text-xs">{e.stock_entries?.material_type ?? '—'}</div>
+                      </td>
                       <td className="font-mono text-chemist text-xs">{e.invoice_number}</td>
                       <td className="text-primary text-xs">{e.factories?.name}</td>
                       <td className="font-mono text-chemist font-bold">{e.tons_used} KGS</td>
@@ -92,7 +118,11 @@ export default function ChemistHistoryPage() {
                 {entries.map(e => (
                   <div key={e.id} className="data-card">
                     <div className="data-card-header">
-                      <span className="data-card-title text-chemist">{e.invoice_number}</span>
+                      <div>
+                        <div className="text-chemist font-semibold text-sm">{e.stock_entries?.supplier_name ?? '—'}</div>
+                        <div className="text-primary text-xs">{e.stock_entries?.material_type ?? '—'}</div>
+                        <div className="data-card-title font-mono text-[11px] text-muted">{e.invoice_number}</div>
+                      </div>
                       <span className="data-card-meta">{new Date(e.usage_date).toLocaleDateString('en-IN')}</span>
                     </div>
                     <div className="data-card-grid">
