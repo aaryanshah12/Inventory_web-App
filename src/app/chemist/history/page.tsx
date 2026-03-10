@@ -14,11 +14,12 @@ export default function ChemistHistoryPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!profile) return
+    const createdBy = profile?.id
+    if (!createdBy) { setEntries([]); setLoading(false); return }
     async function load() {
       const { data: usage } = await supabase.from('usage_entries')
         .select('*, factories(name)')
-        .eq('created_by', profile.id)
+        .eq('created_by', createdBy)
         .order('created_at', { ascending: false })
 
       const list = usage ?? []
