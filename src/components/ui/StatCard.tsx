@@ -8,6 +8,8 @@ interface StatCardProps {
   icon?: ReactNode
   color?: 'owner' | 'inputer' | 'chemist' | 'muted'
   trend?: 'up' | 'down' | 'neutral'
+  onClick?: () => void
+  actionLabel?: string
 }
 
 const colorMap = {
@@ -17,10 +19,29 @@ const colorMap = {
   muted:   { border: 'border-border',     bg: 'bg-panel',     text: 'text-primary',   icon: 'bg-layer'    },
 }
 
-export default function StatCard({ label, value, sub, icon, color = 'muted', trend }: StatCardProps) {
+export default function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+  color = 'muted',
+  trend,
+  onClick,
+  actionLabel = 'Drill down',
+}: StatCardProps) {
   const c = colorMap[color]
   return (
-    <div className={clsx('card border p-5 transition-all hover:scale-[1.01]', c.border)}>
+    <div
+      className={clsx(
+        'card border p-5 transition-all hover:scale-[1.01]',
+        c.border,
+        onClick ? 'cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/40' : ''
+      )}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() }}}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-2">{label}</div>
@@ -33,11 +54,21 @@ export default function StatCard({ label, value, sub, icon, color = 'muted', tre
           </div>
         )}
       </div>
-      {trend && (
-        <div className={clsx('mt-3 text-xs font-mono',
-          trend === 'up' ? 'text-chemist' : trend === 'down' ? 'text-red-400' : 'text-muted'
-        )}>
-          {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} vs last month
+      {(trend || onClick) && (
+        <div className="mt-3 flex items-center justify-between">
+          {trend && (
+            <div className={clsx('text-xs font-mono',
+              trend === 'up' ? 'text-chemist' : trend === 'down' ? 'text-red-400' : 'text-muted'
+            )}>
+              {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} vs last month
+            </div>
+          )}
+          {onClick && (
+            <div className="text-[11px] font-mono text-primary flex items-center gap-1">
+              <span>{actionLabel}</span>
+              <span aria-hidden>→</span>
+            </div>
+          )}
         </div>
       )}
     </div>

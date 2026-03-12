@@ -5,6 +5,8 @@ import StatCard from '@/components/ui/StatCard'
 import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { FactorySummary } from '@/types'
+import DrilldownModal from '@/components/ui/DrilldownModal'
+import { DrilldownRow, fetchLoadedDrilldown, fetchRemainingDrilldown } from '@/lib/drilldown'
 import { Package, FlaskConical, Factory, TrendingUp, AlertTriangle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuth } from '@/hooks/useAuth'
@@ -14,6 +16,12 @@ export default function OwnerDashboard() {
   const [summaries, setSummaries]   = useState<FactorySummary[]>([])
   const [recentStock, setRecentStock] = useState<any[]>([])
   const [recentUsage, setRecentUsage] = useState<any[]>([])
+  const [loadedDrilldown, setLoadedDrilldown] = useState<DrilldownRow[]>([])
+  const [remainingDrilldown, setRemainingDrilldown] = useState<DrilldownRow[]>([])
+  const [drilldownRows, setDrilldownRows] = useState<DrilldownRow[]>([])
+  const [drilldownTitle, setDrilldownTitle] = useState('')
+  const [drilldownOpen, setDrilldownOpen] = useState(false)
+  const [drilldownLoading, setDrilldownLoading] = useState(false)
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
@@ -21,21 +29,32 @@ export default function OwnerDashboard() {
       if (authLoading) return
       const factoryIds = (profile?.factories ?? []).map((f: any) => f.id).filter(Boolean)
       if (factoryIds.length === 0) {
-        setSummaries([]); setRecentStock([]); setRecentUsage([]); setLoading(false)
+        setSummaries([]); setRecentStock([]); setRecentUsage([]); setLoadedDrilldown([]); setRemainingDrilldown([]); setLoading(false)
         return
       }
-      const [s, rs, ru] = await Promise.all([
+      const [s, rs, ru, loadedRows, remainingRows] = await Promise.all([
         supabase.from('factory_summary').select('*').in('factory_id', factoryIds),
         supabase.from('stock_entries').select('*, factories(name)').in('factory_id', factoryIds).order('created_at', { ascending: false }).limit(5),
         supabase.from('usage_entries').select('*, factories(name), profiles(full_name)').in('factory_id', factoryIds).order('created_at', { ascending: false }).limit(5),
+        fetchLoadedDrilldown({ factoryIds }),
+        fetchRemainingDrilldown({ factoryIds }),
       ])
       setSummaries(s.data ?? [])
       setRecentStock(rs.data ?? [])
       setRecentUsage(ru.data ?? [])
+      setLoadedDrilldown(loadedRows)
+      setRemainingDrilldown(remainingRows)
       setLoading(false)
     }
     load()
   }, [authLoading, profile])
+
+  const openDrilldown = (title: string, rows: DrilldownRow[]) => {
+    setDrilldownTitle(title)
+    setDrilldownRows(rows)
+    setDrilldownOpen(true)
+    setDrilldownLoading(false)
+  }
 
   const totals = summaries.reduce((acc, s) => ({
     loaded:   acc.loaded   + Number(s.total_tons_loaded),
@@ -77,9 +96,24 @@ export default function OwnerDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-          <StatCard label="Total KGS Loaded"  value={totals.loaded.toFixed(1)}  sub="Across all factories" icon={<Package size={18}/>}     color="inputer" />
+          <StatCard
+            label="Total KGS Loaded"
+            value={totals.loaded.toFixed(1)}
+            sub="Across all factories"
+            icon={<Package size={18}/>}
+            color="inputer"
+            onClick={() => openDrilldown('Loaded by Supplier · Product', loadedDrilldown)}
+          />
           <StatCard label="Total KGS Used"    value={totals.used.toFixed(1)}    sub="All consumption"      icon={<FlaskConical size={18}/>}  color="chemist" />
-          <StatCard label="Closing Balance"    value={totals.balance.toFixed(1)} sub="Remaining stock (KGS)"  icon={<TrendingUp size={18}/>}    color="owner"   />
+          <StatCard
+            label="Closing Balance"
+            value={totals.balance.toFixed(1)}
+            sub="Remaining stock (KGS)"
+            icon={<TrendingUp size={18}/>}
+            color="owner"
+            onClick={() => openDrilldown('Remaining Stock by Supplier · Product', remainingDrilldown)}
+            actionLabel="View breakdown"
+          />
           <StatCard label="Total Stock Value"  value={`₹${(totals.value/100000).toFixed(1)}L`} sub={`${totals.invoices} invoices`} icon={<Factory size={18}/>} color="muted" />
         </div>
 
@@ -268,6 +302,14 @@ export default function OwnerDashboard() {
           </div>
         </div>
       </div>
+      <DrilldownModal
+        open={drilldownOpen}
+        title={drilldownTitle}
+        subtitle="Supplier and product level details"
+        rows={drilldownRows}
+        loading={drilldownLoading}
+        onClose={() => setDrilldownOpen(false)}
+      />
     </AppLayout>
   )
 }

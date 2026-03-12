@@ -5,6 +5,8 @@ import StatCard from '@/components/ui/StatCard'
 import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import DrilldownModal from '@/components/ui/DrilldownModal'
+import { DrilldownRow, fetchLoadedDrilldown } from '@/lib/drilldown'
 import { Package, TrendingUp, Clock } from 'lucide-react'
 import Link from 'next/link'
 
@@ -12,6 +14,9 @@ export default function InputerDashboard() {
   const { profile } = useAuth()
   const [recentEntries, setRecentEntries] = useState<any[]>([])
   const [stats, setStats] = useState({ total: 0, todayCount: 0, totalTons: 0 })
+  const [drilldownRows, setDrilldownRows] = useState<DrilldownRow[]>([])
+  const [drilldownOpen, setDrilldownOpen] = useState(false)
+  const [drilldownLoading, setDrilldownLoading] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,10 +35,25 @@ export default function InputerDashboard() {
         totalTons: entries.reduce((s, e) => s + Number(e.tons_loaded), 0),
       })
       setRecentEntries(recent.data ?? [])
+      const entryFactoryIds = Array.from(new Set((recent.data ?? []).map((e: any) => e.factory_id).filter(Boolean)))
+      const factoryIds = entryFactoryIds.length > 0
+        ? entryFactoryIds
+        : (profile.factories ?? []).map((f: any) => f.id).filter(Boolean)
+      if (factoryIds.length > 0) {
+        const rows = await fetchLoadedDrilldown({ factoryIds, createdBy: profile.id })
+        setDrilldownRows(rows)
+      } else {
+        setDrilldownRows([])
+      }
       setLoading(false)
     }
     load()
   }, [profile])
+
+  const openDrilldown = () => {
+    setDrilldownOpen(true)
+    setDrilldownLoading(false)
+  }
 
   return (
     <AppLayout>
@@ -47,7 +67,13 @@ export default function InputerDashboard() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
           <StatCard label="Total Entries"     value={stats.total}                      icon={<Package size={18}/>}    color="inputer" />
-          <StatCard label="Total KGS Loaded" value={`${stats.totalTons.toFixed(1)} KGS`} icon={<TrendingUp size={18}/>} color="inputer" />
+          <StatCard
+            label="Total KGS Loaded"
+            value={`${stats.totalTons.toFixed(1)} KGS`}
+            icon={<TrendingUp size={18}/>}
+            color="inputer"
+            onClick={openDrilldown}
+          />
           <StatCard label="Today's Entries"   value={stats.todayCount}                 icon={<Clock size={18}/>}      color="muted"   />
         </div>
 
@@ -125,6 +151,14 @@ export default function InputerDashboard() {
             </>
           )}
         </div>
+        <DrilldownModal
+          open={drilldownOpen}
+          title="Loaded by Supplier · Product"
+          subtitle="Based on your stock entries"
+          rows={drilldownRows}
+          loading={drilldownLoading}
+          onClose={() => setDrilldownOpen(false)}
+        />
       </div>
     </AppLayout>
   )

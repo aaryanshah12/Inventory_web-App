@@ -5,6 +5,8 @@ import StatCard from '@/components/ui/StatCard'
 import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import DrilldownModal from '@/components/ui/DrilldownModal'
+import { DrilldownRow, fetchRemainingDrilldown } from '@/lib/drilldown'
 import { FlaskConical, Package, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
@@ -12,6 +14,9 @@ export default function ChemistDashboard() {
   const { profile } = useAuth()
   const [balance, setBalance]         = useState<any[]>([])
   const [recentUsage, setRecentUsage] = useState<any[]>([])
+  const [drilldownRows, setDrilldownRows] = useState<DrilldownRow[]>([])
+  const [drilldownOpen, setDrilldownOpen] = useState(false)
+  const [drilldownLoading, setDrilldownLoading] = useState(false)
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
@@ -41,6 +46,8 @@ export default function ChemistDashboard() {
         ...u,
         stock_entries: stockMap[u.invoice_number] ?? null,
       })))
+      const remainingRows = await fetchRemainingDrilldown({ factoryIds })
+      setDrilldownRows(remainingRows)
       setLoading(false)
     }
     load()
@@ -60,7 +67,15 @@ export default function ChemistDashboard() {
         />
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
-          <StatCard label="Total Available"  value={`${totalAvailable.toFixed(1)} KGS`} icon={<Package size={18}/>}      color="chemist" sub="Across your factories" />
+          <StatCard
+            label="Total Available"
+            value={`${totalAvailable.toFixed(1)} KGS`}
+            icon={<Package size={18}/>}
+            color="chemist"
+            sub="Across your factories"
+            onClick={() => { setDrilldownOpen(true); setDrilldownLoading(false) }}
+            actionLabel="Drill down"
+          />
           <StatCard label="Active Batches"   value={balance.length}                  icon={<FlaskConical size={18}/>}  color="inputer" sub="Invoices with stock"   />
           <StatCard label="Low Stock Alerts" value={lowStock.length}                 icon={<AlertTriangle size={18}/>} color={lowStock.length > 0 ? 'owner' : 'muted'} sub="< 5 KGS remaining" />
         </div>
@@ -205,6 +220,14 @@ export default function ChemistDashboard() {
           </div>
         </div>
       </div>
+      <DrilldownModal
+        open={drilldownOpen}
+        title="Remaining Stock by Supplier · Product"
+        subtitle="Based on available balance"
+        rows={drilldownRows}
+        loading={drilldownLoading}
+        onClose={() => setDrilldownOpen(false)}
+      />
     </AppLayout>
   )
 }
