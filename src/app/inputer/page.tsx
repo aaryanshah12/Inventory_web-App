@@ -20,9 +20,12 @@ export default function InputerDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const userProfile = profile
-    if (!userProfile) return
     async function load() {
+      const userProfile = profile
+      if (!userProfile) {
+        setLoading(false)
+        return
+      }
       const today = new Date().toISOString().split('T')[0]
       const [all, recent] = await Promise.all([
         supabase.from('stock_entries').select('tons_loaded, entry_date').eq('created_by', userProfile.id),
