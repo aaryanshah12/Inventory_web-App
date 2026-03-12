@@ -20,12 +20,13 @@ export default function InputerDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!profile) return
+    const userProfile = profile
+    if (!userProfile) return
     async function load() {
       const today = new Date().toISOString().split('T')[0]
       const [all, recent] = await Promise.all([
-        supabase.from('stock_entries').select('tons_loaded, entry_date').eq('created_by', profile!.id),
-        supabase.from('stock_entries').select('*, factories(name)').eq('created_by', profile!.id)
+        supabase.from('stock_entries').select('tons_loaded, entry_date').eq('created_by', userProfile.id),
+        supabase.from('stock_entries').select('*, factories(name)').eq('created_by', userProfile.id)
           .order('created_at', { ascending: false }).limit(8),
       ])
       const entries = all.data ?? []
@@ -38,9 +39,9 @@ export default function InputerDashboard() {
       const entryFactoryIds = Array.from(new Set((recent.data ?? []).map((e: any) => e.factory_id).filter(Boolean)))
       const factoryIds = entryFactoryIds.length > 0
         ? entryFactoryIds
-        : (profile.factories ?? []).map((f: any) => f.id).filter(Boolean)
+        : (userProfile.factories ?? []).map((f: any) => f.id).filter(Boolean)
       if (factoryIds.length > 0) {
-        const rows = await fetchLoadedDrilldown({ factoryIds, createdBy: profile.id })
+        const rows = await fetchLoadedDrilldown({ factoryIds, createdBy: userProfile.id })
         setDrilldownRows(rows)
       } else {
         setDrilldownRows([])
