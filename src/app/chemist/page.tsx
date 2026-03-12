@@ -6,8 +6,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import DrilldownModal from '@/components/ui/DrilldownModal'
-import { DrilldownRow, fetchRemainingDrilldown } from '@/lib/drilldown'
-import { FlaskConical, Package, AlertTriangle } from 'lucide-react'
+import { DrilldownRow, fetchLoadedDrilldown, fetchRemainingDrilldown } from '@/lib/drilldown'
+import { FlaskConical, Package, AlertTriangle, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
 export default function ChemistDashboard() {
@@ -15,8 +15,11 @@ export default function ChemistDashboard() {
   const [balance, setBalance]         = useState<any[]>([])
   const [recentUsage, setRecentUsage] = useState<any[]>([])
   const [drilldownRows, setDrilldownRows] = useState<DrilldownRow[]>([])
+  const [drilldownTitle, setDrilldownTitle] = useState('')
+  const [loadedRows, setLoadedRows] = useState<DrilldownRow[]>([])
   const [drilldownOpen, setDrilldownOpen] = useState(false)
   const [drilldownLoading, setDrilldownLoading] = useState(false)
+  const [totalLoaded, setTotalLoaded] = useState(0)
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
@@ -47,6 +50,9 @@ export default function ChemistDashboard() {
         stock_entries: stockMap[u.invoice_number] ?? null,
       })))
       const remainingRows = await fetchRemainingDrilldown({ factoryIds })
+      const loadedBySupplier = await fetchLoadedDrilldown({ factoryIds })
+      setLoadedRows(loadedBySupplier)
+      setTotalLoaded(loadedBySupplier.reduce((s, r) => s + Number(r.quantity), 0))
       setDrilldownRows(remainingRows)
       setLoading(false)
     }
@@ -55,6 +61,13 @@ export default function ChemistDashboard() {
 
   const totalAvailable = balance.reduce((s, b) => s + Number(b.tons_remaining), 0)
   const lowStock       = balance.filter(b => Number(b.tons_remaining) < 5)
+
+  const openDrilldown = (title: string, rows: DrilldownRow[]) => {
+    setDrilldownTitle(title)
+    setDrilldownRows(rows)
+    setDrilldownOpen(true)
+    setDrilldownLoading(false)
+  }
 
   return (
     <AppLayout>
@@ -66,14 +79,23 @@ export default function ChemistDashboard() {
           actions={<Link href="/chemist/use" className="btn btn-chemist gap-2"><FlaskConical size={16}/> Log Usage</Link>}
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
           <StatCard
             label="Total Available"
             value={`${totalAvailable.toFixed(1)} KGS`}
             icon={<Package size={18}/>}
             color="chemist"
             sub="Across your factories"
-            onClick={() => { setDrilldownOpen(true); setDrilldownLoading(false) }}
+            onClick={() => openDrilldown('Remaining Stock by Supplier · Product', drilldownRows)}
+            actionLabel="Drill down"
+          />
+          <StatCard
+            label="Stock Loaded"
+            value={`${totalLoaded.toFixed(1)} KGS`}
+            icon={<TrendingUp size={18}/>}
+            color="inputer"
+            sub="Across your factories"
+            onClick={() => openDrilldown('Loaded by Supplier · Product', loadedRows)}
             actionLabel="Drill down"
           />
           <StatCard label="Active Batches"   value={balance.length}                  icon={<FlaskConical size={18}/>}  color="inputer" sub="Invoices with stock"   />
@@ -222,8 +244,8 @@ export default function ChemistDashboard() {
       </div>
       <DrilldownModal
         open={drilldownOpen}
-        title="Remaining Stock by Supplier · Product"
-        subtitle="Based on available balance"
+        title={drilldownTitle}
+        subtitle="Supplier and product level details"
         rows={drilldownRows}
         loading={drilldownLoading}
         onClose={() => setDrilldownOpen(false)}
