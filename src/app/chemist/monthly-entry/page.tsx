@@ -66,6 +66,14 @@ export default function ChemistMonthlyEntryPage() {
     resetForm()
   }, [factories])
 
+  const hasFactory = Boolean(form.factory_id)
+  const hasBatch = hasFactory && form.batch_id.trim().length > 0
+  const hasOleum = hasBatch && form.oleum_23 !== undefined
+  const hasAsIs = hasOleum && form.as_is_kg !== undefined
+  const hasPurity = hasAsIs && form.purity_nv !== undefined
+
+  const parseNumber = (value: string) => value === '' ? undefined : Number(value)
+
   const openModal = () => {
     resetForm()
     setModalOpen(true)
@@ -88,6 +96,10 @@ export default function ChemistMonthlyEntryPage() {
         created_by: profile.id,
         used_pnt: DEFAULT_USED_PNT,
       }
+    if (!hasPurity) {
+      alert('Please complete all fields in order')
+      return
+    }
       await saveMonthlyEntry(payload)
       resetForm()
       await load()
@@ -241,19 +253,42 @@ export default function ChemistMonthlyEntryPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Batch ID</label>
-            <input className="input" value={form.batch_id} onChange={e => setForm(f => ({ ...f, batch_id: e.target.value }))}/>
+            <input
+              className="input"
+              value={form.batch_id}
+              onChange={e => setForm(f => ({ ...f, batch_id: e.target.value }))}
+              disabled={!hasFactory}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Oleum 23%</label>
-            <input className="input" type="number" value={form.oleum_23 ?? ''} onChange={e => setForm(f => ({ ...f, oleum_23: Number(e.target.value) || undefined }))}/>
+            <input
+              className="input"
+              type="number"
+              value={form.oleum_23 ?? ''}
+              onChange={e => setForm(f => ({ ...f, oleum_23: parseNumber(e.target.value) }))}
+              disabled={!hasBatch}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">AS IS (Kg)</label>
-            <input className="input" type="number" value={form.as_is_kg ?? ''} onChange={e => setForm(f => ({ ...f, as_is_kg: Number(e.target.value) || undefined }))}/>
+            <input
+              className="input"
+              type="number"
+              value={form.as_is_kg ?? ''}
+              onChange={e => setForm(f => ({ ...f, as_is_kg: parseNumber(e.target.value) }))}
+              disabled={!hasOleum}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Purity (NV)</label>
-            <input className="input" type="number" value={form.purity_nv ?? ''} onChange={e => setForm(f => ({ ...f, purity_nv: Number(e.target.value) || undefined }))}/>
+            <input
+              className="input"
+              type="number"
+              value={form.purity_nv ?? ''}
+              onChange={e => setForm(f => ({ ...f, purity_nv: parseNumber(e.target.value) }))}
+              disabled={!hasAsIs}
+            />
           </div>
           <div className="flex items-center gap-2 text-xs text-muted mt-5">
             <PackagePlus size={16}/> Actuals auto-calc · Used PNT fixed at {DEFAULT_USED_PNT}
@@ -261,7 +296,7 @@ export default function ChemistMonthlyEntryPage() {
         </div>
         <div className="flex justify-end gap-2">
           <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
-          <button className="btn btn-chemist gap-2" onClick={handleSave} disabled={saving}>
+          <button className="btn btn-chemist gap-2" onClick={handleSave} disabled={saving || !hasPurity}>
             {saving ? 'Saving...' : 'Save Entry'}
             <Save size={16}/>
           </button>

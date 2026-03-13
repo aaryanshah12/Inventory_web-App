@@ -123,7 +123,16 @@ export const totalsFor = (entries: MonthlyEntry[]) => {
   return { totalActual: round2(totalActual), totalUsed: round2(totalUsed), avgYield: round2(avgYield) }
 }
 
-export const toCsv = (entries: MonthlyEntry[], includeFreeAcidity: boolean) => {
+export const toCsv = (entries: MonthlyEntry[], includeFreeAcidity: boolean, includeTotals = false) => {
+  const entriesWithDerived = entries.map(e => {
+    const derived = computeDerived(e)
+    return {
+      ...e,
+      actual_real_kg: e.actual_real_kg ?? derived.actual_real_kg,
+      yield_pct: e.yield_pct ?? derived.yield_pct,
+      used_pnt: e.used_pnt ?? derived.used_pnt,
+    }
+  })
   const headers = [
     'BatchId',
     'Oleum23',
@@ -134,16 +143,32 @@ export const toCsv = (entries: MonthlyEntry[], includeFreeAcidity: boolean) => {
     'Used_PNT',
     'Yield',
   ]
-  const rows = entries.map(e => [
+  const rows = entriesWithDerived.map(e => [
     e.batch_id,
     e.oleum_23 ?? '',
     e.as_is_kg ?? '',
     e.purity_nv ?? '',
     ...(includeFreeAcidity ? [e.free_acidity ?? ''] : []),
-    e.actual_real_kg !== undefined ? round2(Number(e.actual_real_kg)).toFixed(2) : '',
-    e.used_pnt !== undefined ? round2(Number(e.used_pnt)).toFixed(2) : '',
-    e.yield_pct !== undefined ? round2(Number(e.yield_pct)).toFixed(2) : '',
+    round2(Number(e.actual_real_kg ?? 0)).toFixed(2),
+    round2(Number(e.used_pnt ?? 0)).toFixed(2),
+    round2(Number(e.yield_pct ?? 0)).toFixed(2),
   ])
+
+  if (includeTotals) {
+    const totals = totalsFor(entriesWithDerived)
+    rows.push([])
+    rows.push([
+      'Totals',
+      '',
+      '',
+      '',
+      ...(includeFreeAcidity ? [''] : []),
+      totals.totalActual.toFixed(2),
+      totals.totalUsed.toFixed(2),
+      `${totals.avgYield.toFixed(2)} (avg)`,
+    ])
+  }
+
   const lines = [headers.join(','), ...rows.map(r => r.join(','))]
   return lines.join('\n')
 }
