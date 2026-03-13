@@ -90,6 +90,11 @@ body {
   border: 1px solid var(--color-border);
   color: var(--color-text);
 }
+.input-dark {
+  background: color-mix(in srgb, var(--color-text) 10%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
+}
+.input-dark::placeholder { color: color-mix(in srgb, var(--color-muted) 85%, transparent); }
 .input-field::placeholder { color: var(--color-muted); }
 .input-field:focus { border-color: var(--color-inputer); box-shadow: 0 0 0 2px rgba(0,194,255,0.15); }
 .input-field.owner-focus:focus   { border-color: var(--color-owner);   box-shadow: 0 0 0 2px rgba(240,165,0,0.15); }

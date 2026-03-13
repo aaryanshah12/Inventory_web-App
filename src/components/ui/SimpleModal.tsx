@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { X } from 'lucide-react'
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 
 interface SimpleModalProps {
   open: boolean
@@ -15,9 +15,21 @@ interface SimpleModalProps {
 export default function SimpleModal({ open, title, subtitle, onClose, children, footer, widthClass = 'max-w-2xl' }: SimpleModalProps) {
   if (!open) return null
 
+  // Prevent background scrolling while modal is open
+  useEffect(() => {
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previous }
+  }, [])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4">
-      <div className={clsx('bg-panel border border-border rounded-2xl shadow-2xl w-full mx-auto mt-10', widthClass)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div
+        className={clsx(
+          'bg-panel border border-border rounded-2xl shadow-2xl w-full mx-auto max-h-[calc(100vh-2.5rem)] overflow-y-auto',
+          widthClass
+        )}
+      >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
           <div>
             <div className="font-display text-xl text-primary">{title}</div>

@@ -242,7 +242,7 @@ export default function ChemistMonthlyEntryPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Factory</label>
             <select
-              className="input"
+              className="input-field input-dark chemist-focus"
               value={form.factory_id}
               onChange={e => setForm(f => ({ ...f, factory_id: e.target.value }))}
             >
@@ -254,7 +254,7 @@ export default function ChemistMonthlyEntryPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Batch ID</label>
             <input
-              className="input"
+              className="input-field input-dark chemist-focus"
               value={form.batch_id}
               onChange={e => setForm(f => ({ ...f, batch_id: e.target.value }))}
               disabled={!hasFactory}
@@ -263,7 +263,7 @@ export default function ChemistMonthlyEntryPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Oleum 23%</label>
             <input
-              className="input"
+              className="input-field input-dark chemist-focus"
               type="number"
               value={form.oleum_23 ?? ''}
               onChange={e => setForm(f => ({ ...f, oleum_23: parseNumber(e.target.value) }))}
@@ -273,7 +273,7 @@ export default function ChemistMonthlyEntryPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">AS IS (Kg)</label>
             <input
-              className="input"
+              className="input-field input-dark chemist-focus"
               type="number"
               value={form.as_is_kg ?? ''}
               onChange={e => setForm(f => ({ ...f, as_is_kg: parseNumber(e.target.value) }))}
@@ -283,7 +283,7 @@ export default function ChemistMonthlyEntryPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted font-mono">Purity (NV)</label>
             <input
-              className="input"
+              className="input-field input-dark chemist-focus"
               type="number"
               value={form.purity_nv ?? ''}
               onChange={e => setForm(f => ({ ...f, purity_nv: parseNumber(e.target.value) }))}

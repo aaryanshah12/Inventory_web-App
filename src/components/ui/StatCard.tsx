@@ -42,15 +42,21 @@ export default function StatCard({
       onClick={onClick}
       onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() }}}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
           <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-2">{label}</div>
           <div className={clsx('font-display text-3xl font-bold', c.text)}>{value}</div>
           {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
         </div>
         {icon && (
-          <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 self-start', c.icon, c.text)}>
-            {icon}
+          <div
+            className={clsx(
+              'w-12 h-12 rounded-xl grid place-items-center flex-shrink-0 shadow-inner border border-border',
+              c.icon,
+              c.text
+            )}
+          >
+            <div className="scale-110">{icon}</div>
           </div>
         )}
       </div>
