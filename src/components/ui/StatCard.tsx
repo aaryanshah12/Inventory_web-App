@@ -33,7 +33,7 @@ export default function StatCard({
   return (
     <div
       className={clsx(
-        'card border p-5 transition-all hover:scale-[1.01]',
+        'card border p-5 transition-all hover:scale-[1.01] w-full overflow-hidden',
         c.border,
         onClick ? 'cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/40' : ''
       )}
@@ -49,7 +49,7 @@ export default function StatCard({
           {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
         </div>
         {icon && (
-          <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', c.icon, c.text)}>
+          <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 self-start', c.icon, c.text)}>
             {icon}
           </div>
         )}
