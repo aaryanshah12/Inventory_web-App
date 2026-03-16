@@ -123,7 +123,8 @@ export default function OwnerMonthlyEntryPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `monthly-material-${fiscalYear}-m${month}.csv`
+    const monthLabel = monthOptions.find(m => m.value === month)?.label ?? month
+    a.download = `${fiscalYear}_${monthLabel}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }

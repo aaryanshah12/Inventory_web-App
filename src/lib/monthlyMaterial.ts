@@ -77,7 +77,14 @@ export async function fetchMonthlyEntries(params: { fiscal_year: string; month: 
   const res = await fetch(`/api/monthly-material?${qs.toString()}`, { headers })
   const json: ApiResponse<{ entries: MonthlyEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch entries')
-  return json.entries ?? []
+  const entries = json.entries ?? []
+  // Keep batches sorted ascending for consistent table and export order
+  return entries.slice().sort((a, b) =>
+    String(a.batch_id ?? '').localeCompare(String(b.batch_id ?? ''), undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    }),
+  )
 }
 
 export async function saveMonthlyEntry(entry: MonthlyEntry) {
