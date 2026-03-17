@@ -41,6 +41,51 @@ export default function OwnerStockPage() {
 
   const totalValue = filtered.reduce((s,e) => s + Number(e.total_value), 0)
 
+  const formatCsvValue = (value: any) => {
+    if (value === null || value === undefined) return ''
+    const str = String(value)
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
+  }
+
+  const handleExport = () => {
+    if (loading) return
+    if (filtered.length === 0) {
+      alert('No records to export')
+      return
+    }
+    const headers = [
+      'Invoice',
+      'Factory',
+      'Supplier',
+      'Material',
+      'KGS_Loaded',
+      'Rate_Per_Ton',
+      'Total_Value',
+      'Entry_Date',
+      'Created_By',
+    ]
+    const rows = filtered.map(e => [
+      e.invoice_number,
+      (e as any).factories?.name ?? '',
+      e.supplier_name,
+      e.material_type,
+      Number(e.tons_loaded ?? 0),
+      Number(e.rate_per_ton ?? 0),
+      Number(e.total_value ?? 0),
+      new Date(e.entry_date).toISOString().slice(0, 10),
+      (e as any).profiles?.full_name ?? '',
+    ])
+    const lines = [headers.join(','), ...rows.map(r => r.map(formatCsvValue).join(','))]
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const factoryLabel = factory === 'all' ? 'all' : (factories.find(f => f.id === factory)?.name ?? factory)
+    link.download = `stock-ledger_${factoryLabel}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8">
@@ -48,7 +93,11 @@ export default function OwnerStockPage() {
           title="Stock Ledger"
           subtitle="Owner · All Loading Records"
           accent="owner"
-          actions={<button className="btn btn-owner gap-2"><Download size={15}/> Export</button>}
+          actions={
+            <button className="btn btn-owner gap-2" onClick={handleExport} disabled={loading || filtered.length === 0}>
+              <Download size={15}/> Export CSV
+            </button>
+          }
         />
 
         <div className="flex flex-wrap gap-3 mb-6">
