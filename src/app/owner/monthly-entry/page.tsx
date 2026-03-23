@@ -117,6 +117,13 @@ export default function OwnerMonthlyEntryPage() {
     }
   }), [entries])
 
+  const sortedEntries = useMemo(() =>
+    [...entriesWithDerived].sort((a, b) =>
+      (a.batch_id ?? '').localeCompare(b.batch_id ?? '', undefined, { numeric: true, sensitivity: 'base' })
+    ),
+    [entriesWithDerived]
+  )
+
   const handleDownload = () => {
     const csv = toCsv(entriesWithDerived, true, true)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -204,7 +211,7 @@ export default function OwnerMonthlyEntryPage() {
                 </tr>
               </thead>
               <tbody>
-                {entriesWithDerived.map(e => (
+                {sortedEntries.map(e => (
                   <tr key={e.id}>
                     <td className="font-mono text-xs">{e.batch_id}</td>
                     <td>{e.oleum_23 ?? '—'}</td>
@@ -244,7 +251,7 @@ export default function OwnerMonthlyEntryPage() {
 
           <div className="md:hidden p-4">
             <div className="data-card-list">
-              {entriesWithDerived.map(e => (
+              {sortedEntries.map(e => (
                 <div key={e.id ?? e.batch_id} className="data-card">
                   <div className="data-card-header">
                     <span className="data-card-title">{e.batch_id}</span>
