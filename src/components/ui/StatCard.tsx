@@ -33,7 +33,7 @@ export default function StatCard({
   return (
     <div
       className={clsx(
-        'card border p-5 transition-all hover:scale-[1.01] w-full overflow-hidden',
+        'card border p-4 sm:p-5 transition-all hover:scale-[1.01] w-full overflow-hidden',
         c.border,
         onClick ? 'cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/40' : ''
       )}
@@ -42,21 +42,21 @@ export default function StatCard({
       onClick={onClick}
       onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() }}}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
+      <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
           <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-2">{label}</div>
-          <div className={clsx('font-display text-3xl font-bold', c.text)}>{value}</div>
+          <div className={clsx('font-display text-2xl sm:text-3xl font-bold leading-tight', c.text)}>{value}</div>
           {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
         </div>
         {icon && (
           <div
             className={clsx(
-              'w-12 h-12 rounded-xl grid place-items-center flex-shrink-0 shadow-inner border border-border',
+              'size-10 sm:size-12 rounded-xl grid place-items-center flex-shrink-0 shadow-inner border border-border',
               c.icon,
               c.text
             )}
           >
-            <div className="scale-110">{icon}</div>
+            <div className="scale-100 sm:scale-110">{icon}</div>
           </div>
         )}
       </div>

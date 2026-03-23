@@ -94,9 +94,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return (
           <button
             key={item.href}
-            onPointerDown={() => navigate(item.href)}
+            type="button"
+            onClick={() => navigate(item.href)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(item.href) }}}
+            aria-current={active ? 'page' : undefined}
+            style={{ touchAction: 'manipulation' }}
             className={clsx(
-              'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-150 group',
+              'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-150 group min-h-[48px] active:scale-[0.99]',
               active
                 ? clsx('text-primary font-medium',
                     role === 'owner'   ? 'bg-owner/15 border border-owner/30' :
