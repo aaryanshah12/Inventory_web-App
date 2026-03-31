@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import PageHeader from '@/components/ui/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
-import { monthOptions, getCurrentFiscalYear, getFiscalYears, fetchMonthlyEntries, saveMonthlyEntry, deleteMonthlyEntry, totalsFor, computeDerived, MonthlyEntry } from '@/lib/monthlyMaterial'
-import { PackagePlus, Save, Trash2 } from 'lucide-react'
+import { monthOptions, getCurrentFiscalYear, getFiscalYears, fetchMonthlyEntries, saveMonthlyEntry, deleteMonthlyEntry, totalsFor, computeDerived, toCsv, MonthlyEntry } from '@/lib/monthlyMaterial'
+import { Download, PackagePlus, Save, Trash2 } from 'lucide-react'
 import SimpleModal from '@/components/ui/SimpleModal'
 
 const DEFAULT_USED_PNT = 5000
@@ -135,6 +135,18 @@ export default function ChemistMonthlyEntryPage() {
     [entriesWithDerived]
   )
 
+  const handleDownload = () => {
+    const csv = toCsv(entriesWithDerived, false, true)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const monthLabel = monthOptions.find(m => m.value === month)?.label ?? month
+    a.download = `${fiscalYear}_${monthLabel}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const totals = totalsFor(entriesWithDerived)
 
   return (
@@ -145,9 +157,14 @@ export default function ChemistMonthlyEntryPage() {
           subtitle="Chemist · Enter batch values and track yields"
           accent="chemist"
           actions={
-            <div className="badge badge-chemist">
-              <span className="w-1.5 h-1.5 rounded-full bg-chemist animate-pulse" />
-              Live
+            <div className="flex items-center gap-2">
+              <button className="btn btn-chemist-secondary gap-2" onClick={handleDownload} disabled={entriesWithDerived.length === 0}>
+                <Download size={16}/> Download CSV
+              </button>
+              <div className="badge badge-chemist">
+                <span className="w-1.5 h-1.5 rounded-full bg-chemist animate-pulse" />
+                Live
+              </div>
             </div>
           }
         />
