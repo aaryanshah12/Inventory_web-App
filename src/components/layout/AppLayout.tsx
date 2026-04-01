@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Package, FlaskConical,
   Factory, BarChart3, LogOut, ChevronRight,
-  Users, Shield, Menu, X, Sun, Moon, CalendarRange
+  Users, Shield, Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine
 } from 'lucide-react'
 
 interface NavItem { href: string; label: string; icon: React.ReactNode }
@@ -19,6 +19,9 @@ const navByRole: Record<Role, NavItem[]> = {
     { href: '/owner/stock',       label: 'Stock Ledger', icon: <Package size={18}/> },
     { href: '/owner/usage',       label: 'Usage Log',    icon: <FlaskConical size={18}/> },
     { href: '/owner/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
+    { href: '/owner/inout-products', label: 'In/Out Products', icon: <Package size={18}/> },
+    { href: '/owner/inward',      label: 'Inward',       icon: <ArrowDownToLine size={18}/> },
+    { href: '/owner/outward',     label: 'Outward',      icon: <ArrowUpToLine size={18}/> },
     { href: '/owner/reports',     label: 'Reports',      icon: <BarChart3 size={18}/> },
     { href: '/owner/permissions', label: 'Permissions',  icon: <Shield size={18}/> },
     { href: '/owner/users',       label: 'Users',        icon: <Users size={18}/> },
@@ -32,6 +35,8 @@ const navByRole: Record<Role, NavItem[]> = {
     { href: '/chemist',         label: 'Dashboard', icon: <LayoutDashboard size={18}/> },
     { href: '/chemist/use',     label: 'Log Usage', icon: <FlaskConical size={18}/> },
     { href: '/chemist/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
+    { href: '/chemist/inward',  label: 'Inward',    icon: <ArrowDownToLine size={18}/> },
+    { href: '/chemist/outward', label: 'Outward',   icon: <ArrowUpToLine size={18}/> },
     { href: '/chemist/history', label: 'My Usage',  icon: <BarChart3 size={18}/> },
   ],
 }

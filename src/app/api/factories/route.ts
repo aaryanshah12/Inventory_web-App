@@ -1,31 +1,21 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import type { NextRequest } from 'next/server'
 
 // GET /api/factories — Only return factories the signed-in owner can access
 export async function GET(request: NextRequest) {
   try {
-    // Bearer token (preferred) -> fallback to cookies
+    // Bearer token (required)
     const authHeader = request.headers.get('authorization')
     const bearer = authHeader?.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null
 
-    let userId: string | null = null
+    if (!bearer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (bearer) {
-      const { data, error } = await supabaseAdmin.auth.getUser(bearer)
-      if (error || !data?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-      userId = data.user.id
-    } else {
-      const supabase = createRouteHandlerClient({ cookies })
-      const { data: auth } = await supabase.auth.getUser()
-      userId = auth?.user?.id ?? null
+    const { data, error } = await supabaseAdmin.auth.getUser(bearer)
+    if (error || !data?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = data.user.id
 
     const { data: ownerProfile } = await supabaseAdmin
       .from('profiles')
@@ -48,12 +38,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ factories: [], profiles: [], factoryUsersMap: {}, assignedFactories: [] })
     }
 
-    const [{ data: factories, error }, { data: pfRows }] = await Promise.all([
+    const [{ data: factories, error: factoriesError }, { data: pfRows }] = await Promise.all([
       supabaseAdmin.from('factories').select('*').in('id', allowedFactoryIds).order('created_at', { ascending: true }),
       supabaseAdmin.from('profile_factories').select('profile_id, factory_id').in('factory_id', allowedFactoryIds),
     ])
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (factoriesError) return NextResponse.json({ error: factoriesError.message }, { status: 400 })
 
     // Build map: factory_id -> [profile_id, ...]
     const factoryUsersMap: Record<string, string[]> = {}

@@ -1,29 +1,19 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import type { NextRequest } from 'next/server'
 
 async function requireOwnerAccess(request: NextRequest) {
-  // Try Bearer token first (works with supabase-js sessions), then fall back to cookies
+  // Bearer token required (sent by our client helpers)
   const authHeader = request.headers.get('authorization')
   const bearer = authHeader?.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null
 
-  let userId: string | null = null
+  if (!bearer) return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
 
-  if (bearer) {
-    const { data, error } = await supabaseAdmin.auth.getUser(bearer)
-    if (error || !data?.user) {
-      return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-    }
-    userId = data.user.id
-  } else {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: auth } = await supabase.auth.getUser()
-    userId = auth?.user?.id ?? null
+  const { data, error } = await supabaseAdmin.auth.getUser(bearer)
+  if (error || !data?.user) {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
-
-  if (!userId) return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  const userId = data.user.id
 
   const { data: ownerProfile } = await supabaseAdmin
     .from('profiles')
