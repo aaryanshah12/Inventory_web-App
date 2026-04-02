@@ -126,8 +126,8 @@ export default function OwnerSalesPage() {
       .filter(l => l.product_name.length > 0)
 
     setLines(products.length > 0 ? products : [
-      { client_id: newClientId(), product_name: 'Product 1', price_rupees: null, quantity_kg: null },
-      { client_id: newClientId(), product_name: 'Product 2', price_rupees: null, quantity_kg: null },
+      { client_id: newClientId(), product_name: '', price_rupees: null, quantity_kg: null },
+      { client_id: newClientId(), product_name: '', price_rupees: null, quantity_kg: null },
     ])
     setNotes(entryForMonth?.notes ?? '')
   }, [entryForMonth, month, fiscalYear])
@@ -230,80 +230,259 @@ export default function OwnerSalesPage() {
   }
 
   const downloadPdf = (scope: 'fy' | 'month') => {
-    const tableStyle = `
-      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 24px; }
-      h2 { margin-bottom: 4px; font-size: 16px; }
-      p { margin-bottom: 12px; color: #555; font-size: 11px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-      th { background: #111827; color: #e5e7eb; padding: 7px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-      td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; }
-      tr.total-row td { background: #fef9c3; font-weight: bold; }
-      tr.turnover-row td { background: #fde68a; font-weight: bold; }
-      tr.month-header td { background: #f3f4f6; font-weight: bold; color: #374151; }
-      tr.spacer td { height: 12px; border: none; background: transparent; }
-      @media print { body { margin: 12px; } }
-    `
+    const factoryName = (factories as any[]).find(f => f.id === factoryId)?.name ?? 'Company'
 
-    const monthEntryRows = (e: SalesEntry) => {
-      const allLines = (e.sales_entry_lines ?? []).slice()
-      const products = allLines.filter(l => normalizeName(l.product_name) !== 'turnover')
-      const turnover = allLines.find(l => normalizeName(l.product_name) === 'turnover')
-      const totalPrice = products.reduce((s, l) => s + Number(l.price_rupees ?? 0), 0)
-      const totalKg = products.reduce((s, l) => s + Number(l.quantity_kg ?? 0), 0)
-      return { products, turnover, totals: { price: totalPrice, kg: totalKg } }
+    // Indian number formatting (e.g. 29005819 → 2,90,05,819)
+    const fmtIndian = (n: number | null | undefined) => {
+      if (n === null || n === undefined) return '—'
+      const num = Number(n)
+      const isNeg = num < 0
+      const abs = Math.abs(num)
+      const fixed = abs.toFixed(2)
+      const [intPart, decPart] = fixed.split('.')
+      let result = ''
+      if (intPart.length <= 3) {
+        result = intPart
+      } else {
+        result = intPart.slice(-3)
+        let rem = intPart.slice(0, intPart.length - 3)
+        while (rem.length > 2) {
+          result = rem.slice(-2) + ',' + result
+          rem = rem.slice(0, -2)
+        }
+        result = rem + ',' + result
+      }
+      const formatted = `${isNeg ? '-' : ''}${result}`
+      return decPart === '00' ? formatted : `${formatted}.${decPart}`
     }
 
-    const fmt = (v: number | null | undefined, prefix = '') =>
-      v !== null && v !== undefined ? `${prefix}${Number(v).toFixed(2)}` : '—'
+    const mnName = (m: number) =>
+      (monthOptions.find(x => x.value === m)?.label ?? String(m)).toUpperCase()
 
-    let tableHtml = ''
+    const buildMonthBlock = (e: SalesEntry, m: number) => {
+      const allLines = e.sales_entry_lines ?? []
+      const products = allLines.filter(l => normalizeName(l.product_name) !== 'turnover')
+      const turnoverLine = allLines.find(l => normalizeName(l.product_name) === 'turnover')
+      const totalAmount = products.reduce((s, l) => s + Number(l.price_rupees ?? 0), 0)
+      const totalKg = products.reduce((s, l) => s + Number(l.quantity_kg ?? 0), 0)
+      const turnoverAmt = turnoverLine?.price_rupees ?? e.turnover ?? null
 
+      const amountRows = products.map(p =>
+        `<tr><td>${String(p.product_name).toUpperCase()}</td><td class="num">${fmtIndian(p.price_rupees)}</td></tr>`
+      ).join('')
+
+      const kgRows = products.map(p =>
+        `<tr><td>${String(p.product_name).toUpperCase()}</td><td class="num">${fmtIndian(p.quantity_kg)}</td></tr>`
+      ).join('')
+
+      return `
+        <div class="month-block">
+          <table class="side-table">
+            <thead><tr><th>MONTH ${mnName(m)} SALES</th><th>AMOUNT</th></tr></thead>
+            <tbody>
+              <tr class="blank"><td></td><td></td></tr>
+              ${amountRows}
+              <tr class="total-row"><td>TOTAL</td><td class="num">${fmtIndian(totalAmount)}</td></tr>
+              <tr class="blank"><td></td><td></td></tr>
+              <tr class="turnover-row"><td>TOTAL TURN OVER</td><td class="num">${fmtIndian(turnoverAmt)}</td></tr>
+              <tr class="blank"><td></td><td></td></tr>
+            </tbody>
+          </table>
+          <table class="side-table">
+            <thead><tr><th></th><th>SALES IN KG</th></tr></thead>
+            <tbody>
+              <tr class="blank"><td></td><td></td></tr>
+              ${kgRows}
+              <tr class="total-row"><td>TOTAL</td><td class="num">${fmtIndian(totalKg)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `
+    }
+
+    // SVG line chart + data table + summary — mirrors pages 5-7 of the reference PDF
+    const buildChartSection = (
+      title: string,
+      data: { month: string; value: number | null }[],
+      lowestLabel: string,
+      highestLabel: string,
+      total: number
+    ) => {
+      const valid = data.filter(d => d.value !== null)
+      if (valid.length === 0) return ''
+
+      const W = 560, H = 180
+      const pL = 8, pR = 8, pT = 28, pB = 28
+      const cW = W - pL - pR
+      const cH = H - pT - pB
+      const n = data.length
+
+      const vals = valid.map(d => d.value as number)
+      const minV = Math.min(...vals)
+      const maxV = Math.max(...vals)
+      const range = maxV - minV || 1
+
+      const xOf = (i: number) => pL + (i / (n - 1)) * cW
+      const yOf = (v: number) => pT + cH - ((v - minV) / range) * cH
+
+      // Line path (skip gaps for null)
+      let pathD = ''
+      let pen = false
+      data.forEach((d, i) => {
+        if (d.value === null) { pen = false; return }
+        pathD += pen ? `L ${xOf(i)} ${yOf(d.value)} ` : `M ${xOf(i)} ${yOf(d.value)} `
+        pen = true
+      })
+
+      const dots = data.map((d, i) => {
+        if (d.value === null) return ''
+        const x = xOf(i), y = yOf(d.value)
+        // stagger label above/below to reduce overlap
+        const labelY = i % 2 === 0 ? y - 8 : y + 14
+        return `<circle cx="${x}" cy="${y}" r="3" fill="#333"/>
+<text x="${x}" y="${labelY}" text-anchor="middle" font-size="6.5" fill="#111">${fmtIndian(d.value)}</text>`
+      }).join('\n')
+
+      const xLabels = data.map((d, i) =>
+        `<text x="${xOf(i)}" y="${H - 4}" text-anchor="middle" font-size="7" fill="#555">${d.month.slice(0, 3)}</text>`
+      ).join('\n')
+
+      const tableRows = data.map(d =>
+        d.value !== null
+          ? `<tr><td>${d.month}</td><td class="num">${fmtIndian(d.value)}</td></tr>`
+          : ''
+      ).join('')
+
+      return `
+        <div class="chart-section">
+          <div class="chart-title">${title}</div>
+          <div class="chart-body">
+            <table class="chart-table">
+              <thead>
+                <tr><th colspan="2" class="chart-th-label">month vs ${title.replace('MONTH VS ', '').toLowerCase()}</th></tr>
+                <tr><th>month</th><th>turn over(rs)</th></tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+                <tr class="total-row"><td>TOTAL</td><td class="num">${fmtIndian(total)}</td></tr>
+              </tbody>
+            </table>
+            <div class="chart-right">
+              <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="${W}" height="${H}" fill="#e8e8e8" rx="3"/>
+                <path d="${pathD.trim()}" stroke="#222" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+                ${dots}
+                ${xLabels}
+              </svg>
+              <div class="chart-stats">
+                <span>${lowestLabel} – <span class="stat-low">LOWEST</span></span>
+                <span>${highestLabel} – <span class="stat-high">HIGHEST</span></span>
+              </div>
+              <div class="chart-total-label">TOTAL-${fmtIndian(total)}</div>
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    let bodyHtml = ''
     if (scope === 'month') {
-      tableHtml = `
-        <table>
-          <thead><tr><th>Product</th><th>Price (₹)</th><th>Quantity (KG)</th></tr></thead>
-          <tbody>
-      `
-      if (entryForMonth) {
-        const { products, turnover, totals } = monthEntryRows(entryForMonth)
-        products.forEach(p => {
-          tableHtml += `<tr><td>${p.product_name}</td><td>${fmt(p.price_rupees, '₹')}</td><td>${fmt(p.quantity_kg)}</td></tr>`
-        })
-        tableHtml += `<tr class="total-row"><td>Total (Auto Calculated)</td><td>₹${totals.price.toFixed(2)}</td><td>${totals.kg.toFixed(2)}</td></tr>`
-        tableHtml += `<tr class="turnover-row"><td>Turnover</td><td>${fmt(turnover?.price_rupees ?? entryForMonth.turnover, '₹')}</td><td>—</td></tr>`
-      }
-      tableHtml += `</tbody></table>`
+      bodyHtml = entryForMonth
+        ? buildMonthBlock(entryForMonth, month)
+        : '<p>No data for selected month.</p>'
     } else {
-      tableHtml = `
-        <table>
-          <thead><tr><th>FY</th><th>Month</th><th>Product</th><th>Price (₹)</th><th>Quantity (KG)</th></tr></thead>
-          <tbody>
-      `
       const byMonth = new Map<number, SalesEntry>()
       entries.forEach(e => byMonth.set(Number(e.month), e))
-
-      monthOptions.forEach((mo, idx) => {
+      monthOptions.forEach(mo => {
         const e = byMonth.get(Number(mo.value))
-        if (!e) return
-        const { products, turnover, totals } = monthEntryRows(e)
-
-        tableHtml += `<tr class="month-header"><td>${fiscalYear}</td><td>${mo.label}</td><td colspan="3"></td></tr>`
-        products.forEach(p => {
-          tableHtml += `<tr><td></td><td></td><td>${p.product_name}</td><td>${fmt(p.price_rupees, '₹')}</td><td>${fmt(p.quantity_kg)}</td></tr>`
-        })
-        tableHtml += `<tr class="total-row"><td></td><td></td><td>Total (Auto Calculated)</td><td>₹${totals.price.toFixed(2)}</td><td>${totals.kg.toFixed(2)}</td></tr>`
-        tableHtml += `<tr class="turnover-row"><td></td><td></td><td>Turnover</td><td>${fmt(turnover?.price_rupees ?? e.turnover, '₹')}</td><td>—</td></tr>`
-        if (idx < monthOptions.length - 1) tableHtml += `<tr class="spacer"><td colspan="5"></td></tr>`
+        if (e) bodyHtml += buildMonthBlock(e, mo.value)
       })
-      tableHtml += `</tbody></table>`
+
+      // Chart data keyed by monthOptions order (April→March fiscal order)
+      const chartDataFor = (key: 'pntosa' | 'turnover' | 'hydrazone') =>
+        monthOptions.map(mo => ({
+          month: mo.label.toUpperCase(),
+          value: fyData.find(d => d.monthValue === mo.value)?.[key] ?? null,
+        }))
+
+      bodyHtml += buildChartSection(
+        'MONTH VS PNTOSA',
+        chartDataFor('pntosa'),
+        extremes.pntosa.min ? mnName(extremes.pntosa.min.month) : '—',
+        extremes.pntosa.max ? mnName(extremes.pntosa.max.month) : '—',
+        totals.pntosa
+      )
+      bodyHtml += buildChartSection(
+        'MONTH VS TURNOVER',
+        chartDataFor('turnover'),
+        extremes.turnover.min ? mnName(extremes.turnover.min.month) : '—',
+        extremes.turnover.max ? mnName(extremes.turnover.max.month) : '—',
+        totals.turnover
+      )
+      bodyHtml += buildChartSection(
+        'MONTH VS HYDRAZONE',
+        chartDataFor('hydrazone'),
+        extremes.hydrazone.min ? mnName(extremes.hydrazone.min.month) : '—',
+        extremes.hydrazone.max ? mnName(extremes.hydrazone.max.month) : '—',
+        totals.hydrazone
+      )
+
+      if (!bodyHtml) bodyHtml = '<p>No entries for this fiscal year.</p>'
     }
 
     const title = scope === 'fy'
-      ? `${fiscalYear} — Sales Report`
-      : `${fiscalYear} · ${monthLabel(month)} — Sales Report`
+      ? `${factoryName} — ${fiscalYear} Sales`
+      : `${factoryName} — ${mnName(month)} ${fiscalYear} Sales`
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>${tableStyle}</style></head>
-      <body><h2>${title}</h2><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>${tableHtml}</body></html>`
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 30px 36px; }
+    h1 { text-align: center; font-size: 22px; font-weight: bold; text-decoration: underline; margin-bottom: 28px; letter-spacing: 0.02em; }
+    .section-title { font-style: italic; font-weight: bold; font-size: 12px; margin-bottom: 22px; }
+
+    /* Month tables */
+    .month-block { display: flex; gap: 48px; margin-bottom: 36px; align-items: flex-start; }
+    .side-table { border-collapse: collapse; min-width: 240px; }
+    .side-table th { border: 1px solid #999; padding: 5px 10px; font-weight: bold; background: #fff; text-align: left; font-size: 11px; }
+    .side-table td { border: 1px solid #999; padding: 4px 10px; font-size: 11px; }
+    .side-table td.num { text-align: right; }
+    .total-row td { background: #fff44f; font-weight: bold; }
+    .turnover-row td { background: #ea580c; color: #fff; font-weight: bold; }
+    .blank td { border: none; height: 5px; }
+
+    /* Chart sections */
+    .chart-section { margin-bottom: 40px; page-break-inside: avoid; }
+    .chart-title { font-style: italic; font-weight: bold; font-size: 13px; margin-bottom: 14px; }
+    .chart-body { display: flex; gap: 24px; align-items: flex-start; }
+    .chart-table { border-collapse: collapse; min-width: 180px; }
+    .chart-table th { border: 1px solid #999; padding: 4px 8px; font-size: 10px; font-weight: bold; background: #fff; text-align: left; }
+    .chart-th-label { background: #fde68a !important; font-style: italic; }
+    .chart-table td { border: 1px solid #999; padding: 3px 8px; font-size: 10px; }
+    .chart-table td.num { text-align: right; }
+    .chart-right { display: flex; flex-direction: column; gap: 10px; }
+    .chart-stats { display: flex; gap: 28px; font-size: 11px; font-weight: bold; margin-top: 6px; }
+    .stat-low  { color: #e53e3e; }
+    .stat-high { color: #d97706; }
+    .chart-total-label { font-style: italic; font-weight: bold; font-size: 12px; color: #d97706; }
+
+    @media print {
+      body { padding: 16px 20px; }
+      .month-block { page-break-inside: avoid; }
+      .chart-section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${factoryName}</h1>
+  <div class="section-title">MONTH WISE TURNOVER</div>
+  ${bodyHtml}
+</body>
+</html>`
 
     const win = window.open('', '_blank')
     if (!win) return
@@ -490,12 +669,15 @@ export default function OwnerSalesPage() {
             {lines.map((l, idx) => (
               <div key={l.client_id} className="card p-4">
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <input
-                    className="input font-mono text-sm uppercase tracking-wide"
-                    value={l.product_name}
-                    onChange={e => setLines(prev => prev.map((x, i) => i === idx ? ({ ...x, product_name: e.target.value }) : x))}
-                    placeholder={`Product ${idx + 1}`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-muted uppercase tracking-widest whitespace-nowrap">Product Name</span>
+                    <input
+                      className="input font-mono text-sm uppercase tracking-wide w-44 border border-border rounded-md px-2 py-1"
+                      value={l.product_name}
+                      onChange={e => setLines(prev => prev.map((x, i) => i === idx ? ({ ...x, product_name: e.target.value }) : x))}
+                      placeholder={`e.g. PNTOSA`}
+                    />
+                  </div>
                   <button
                     className="btn btn-ghost text-red-400 border border-border"
                     onClick={() => setLines(prev => prev.filter((_, i) => i !== idx))}
@@ -562,7 +744,7 @@ export default function OwnerSalesPage() {
           <div className="flex justify-between gap-2 flex-wrap">
             <button
               className="btn btn-owner-secondary"
-              onClick={() => setLines(prev => ([...prev, { client_id: newClientId(), product_name: `Product ${prev.length + 1}`, price_rupees: null, quantity_kg: null }]))}
+              onClick={() => setLines(prev => ([...prev, { client_id: newClientId(), product_name: '', price_rupees: null, quantity_kg: null }]))}
             >
               Add Product
             </button>
