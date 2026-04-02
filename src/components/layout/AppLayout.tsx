@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Package, FlaskConical,
   BarChart3, LogOut, ChevronRight,
-  Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine, Settings
+  Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine, Settings, TrendingUp
 } from 'lucide-react'
 
 interface NavItem { href: string; label: string; icon: React.ReactNode }
@@ -21,6 +21,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { href: '/owner/inout-products', label: 'In/Out Products', icon: <Package size={18}/> },
     { href: '/owner/inward',      label: 'Inward',       icon: <ArrowDownToLine size={18}/> },
     { href: '/owner/outward',     label: 'Outward',      icon: <ArrowUpToLine size={18}/> },
+    { href: '/owner/sales',       label: 'Sales',        icon: <TrendingUp size={18}/> },
     { href: '/owner/reports',     label: 'Reports',    icon: <BarChart3 size={18}/> },
     { href: '/owner/management', label: 'Management', icon: <Settings size={18}/> },
   ],

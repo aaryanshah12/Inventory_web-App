@@ -13,14 +13,15 @@ interface SimpleModalProps {
 }
 
 export default function SimpleModal({ open, title, subtitle, onClose, children, footer, widthClass = 'max-w-2xl' }: SimpleModalProps) {
-  if (!open) return null
-
   // Prevent background scrolling while modal is open
   useEffect(() => {
+    if (!open) return
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = previous }
-  }, [])
+  }, [open])
+
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
