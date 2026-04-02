@@ -6,8 +6,8 @@ import clsx from 'clsx'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Package, FlaskConical,
-  Factory, BarChart3, LogOut, ChevronRight,
-  Users, Shield, Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine
+  BarChart3, LogOut, ChevronRight,
+  Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine, Settings
 } from 'lucide-react'
 
 interface NavItem { href: string; label: string; icon: React.ReactNode }
@@ -15,16 +15,14 @@ interface NavItem { href: string; label: string; icon: React.ReactNode }
 const navByRole: Record<Role, NavItem[]> = {
   owner: [
     { href: '/owner',             label: 'Dashboard',    icon: <LayoutDashboard size={18}/> },
-    { href: '/owner/factories',   label: 'Factories',    icon: <Factory size={18}/> },
     { href: '/owner/stock',       label: 'Stock Ledger', icon: <Package size={18}/> },
     { href: '/owner/usage',       label: 'Usage Log',    icon: <FlaskConical size={18}/> },
     { href: '/owner/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
     { href: '/owner/inout-products', label: 'In/Out Products', icon: <Package size={18}/> },
     { href: '/owner/inward',      label: 'Inward',       icon: <ArrowDownToLine size={18}/> },
     { href: '/owner/outward',     label: 'Outward',      icon: <ArrowUpToLine size={18}/> },
-    { href: '/owner/reports',     label: 'Reports',      icon: <BarChart3 size={18}/> },
-    { href: '/owner/permissions', label: 'Permissions',  icon: <Shield size={18}/> },
-    { href: '/owner/users',       label: 'Users',        icon: <Users size={18}/> },
+    { href: '/owner/reports',     label: 'Reports',    icon: <BarChart3 size={18}/> },
+    { href: '/owner/management', label: 'Management', icon: <Settings size={18}/> },
   ],
   inputer: [
     { href: '/inputer',         label: 'Dashboard',  icon: <LayoutDashboard size={18}/> },
@@ -46,11 +44,6 @@ const roleColors: Record<Role, string> = {
   inputer: 'text-inputer border-inputer/30 bg-inputer/10',
   chemist: 'text-chemist border-chemist/30 bg-chemist/10',
 }
-const roleAccent: Record<Role, string> = {
-  owner:   'bg-owner',
-  inputer: 'bg-inputer',
-  chemist: 'bg-chemist',
-}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth()
@@ -59,21 +52,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role     = profile?.role ?? 'chemist'
   const navItems = navByRole[role]
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window === 'undefined') return 'dark'
-    const saved = (localStorage.getItem('theme') as 'dark' | 'light' | null) ?? 'dark'
-    if (typeof document !== 'undefined') document.documentElement.dataset.theme = saved
-    return saved
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [themeMounted, setThemeMounted] = useState(false)
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
 
-  // Theme persistence
+  // Read saved theme on mount (avoids SSR/client hydration mismatch)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    const saved = (localStorage.getItem('theme') as 'dark' | 'light' | null) ?? 'dark'
+    setTheme(saved)
+    document.documentElement.dataset.theme = saved
+    setThemeMounted(true)
+  }, [])
+
+  // Persist theme changes
+  useEffect(() => {
+    if (!themeMounted) return
     document.documentElement.dataset.theme = theme
     localStorage.setItem('theme', theme)
-  }, [theme])
+  }, [theme, themeMounted])
 
   async function handleSignOut() {
     await signOut()
@@ -144,7 +141,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             className="text-muted hover:text-primary p-2 border border-border rounded-lg bg-layer-sm"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+            {!themeMounted || theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-muted hover:text-primary p-1">
             <X size={20} />
@@ -228,7 +225,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="text-muted hover:text-primary p-2 border border-border rounded-lg bg-layer-sm"
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+              {!themeMounted || theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
             </button>
             <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold', roleColors[role])}>
               {profile?.full_name?.charAt(0).toUpperCase() ?? '?'}
