@@ -5,6 +5,7 @@ type SalesEntryInput = {
   id?: string
   fiscal_year: string
   month: number
+  factory_id: string
   turnover?: number | null
   pntosa?: number | null
   hydrazone?: number | null
@@ -36,16 +37,17 @@ const normalizeProductKey = (name: string) => {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const fiscalYear = searchParams.get('fiscal_year')
-  const month = searchParams.get('month')
+  const factoryId  = searchParams.get('factory_id')
+  const month      = searchParams.get('month')
 
-  if (!fiscalYear) {
-    return NextResponse.json({ error: 'fiscal_year is required' }, { status: 400 })
-  }
+  if (!fiscalYear) return NextResponse.json({ error: 'fiscal_year is required' }, { status: 400 })
+  if (!factoryId)  return NextResponse.json({ error: 'factory_id is required' },  { status: 400 })
 
   let query = supabaseAdmin
     .from('sales_entries')
     .select('*, sales_entry_lines(*)')
     .eq('fiscal_year', fiscalYear)
+    .eq('factory_id', factoryId)
     .order('month', { ascending: true })
 
   if (month) query = query.eq('month', Number(month))
@@ -59,8 +61,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const payload: SalesEntryInput = await request.json()
-    if (!payload.fiscal_year || !payload.month || !payload.created_by) {
-      return NextResponse.json({ error: 'fiscal_year, month, created_by are required' }, { status: 400 })
+    if (!payload.fiscal_year || !payload.month || !payload.created_by || !payload.factory_id) {
+      return NextResponse.json({ error: 'fiscal_year, month, factory_id, created_by are required' }, { status: 400 })
     }
 
     const lines = (payload.lines ?? [])
@@ -76,18 +78,19 @@ export async function POST(request: Request) {
     const pntosaLine = byKey('pntosa')
     const hydrazoneLine = byKey('hydrazone')
 
-    // Upsert by FY+month (enforced by unique index)
+    // Upsert by FY+month+factory (enforced by unique index)
     const { data, error } = await supabaseAdmin
       .from('sales_entries')
       .upsert({
         fiscal_year: String(payload.fiscal_year).trim(),
         month: Number(payload.month),
+        factory_id: payload.factory_id,
         turnover: toNumOrNull(payload.turnover) ?? (turnoverLine?.price_rupees ?? null),
         pntosa: toNumOrNull(payload.pntosa) ?? (pntosaLine?.price_rupees ?? null),
         hydrazone: toNumOrNull(payload.hydrazone) ?? (hydrazoneLine?.price_rupees ?? null),
         notes: payload.notes ?? null,
         created_by: payload.created_by,
-      }, { onConflict: 'fiscal_year,month' })
+      }, { onConflict: 'fiscal_year,month,factory_id' })
       .select()
       .single()
 

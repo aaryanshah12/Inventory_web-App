@@ -53,14 +53,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role     = profile?.role ?? 'chemist'
   const navItems = navByRole[role]
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [themeMounted, setThemeMounted] = useState(false)
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   // Read saved theme on mount (avoids SSR/client hydration mismatch)
   useEffect(() => {
-    const saved = (localStorage.getItem('theme') as 'dark' | 'light' | null) ?? 'dark'
+    const saved = (localStorage.getItem('theme') as 'dark' | 'light' | null) ?? 'light'
     setTheme(saved)
     document.documentElement.dataset.theme = saved
     setThemeMounted(true)

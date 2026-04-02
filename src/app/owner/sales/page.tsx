@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { getCurrentFiscalYear, getFiscalYears, monthOptions, fetchSalesEntries, saveSalesEntry, deleteSalesEntry, SalesEntry, SalesEntryLine } from '@/lib/sales'
 import { Download, Save, Trash2 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
-import ExcelJS from 'exceljs'
 
 const num = (v: any) => (v === '' || v === null || v === undefined ? null : Number(v))
 
@@ -63,6 +62,8 @@ function lineBy(entriesForMonth: SalesEntry | null, product: string) {
 
 export default function OwnerSalesPage() {
   const { profile } = useAuth()
+  const factories = useMemo(() => profile?.factories ?? [], [profile])
+  const [factoryId, setFactoryId] = useState<string>('')
   const [fiscalYear, setFiscalYear] = useState(getCurrentFiscalYear())
   const [month, setMonth] = useState<number>(monthOptions[0].value)
   const [entries, setEntries] = useState<SalesEntry[]>([])
@@ -72,10 +73,18 @@ export default function OwnerSalesPage() {
 
   const fiscalYears = useMemo(() => getFiscalYears(8), [])
 
+  // Set default factory once profile loads
+  useEffect(() => {
+    if (factories.length > 0 && !factoryId) {
+      setFactoryId((factories[0] as any).id)
+    }
+  }, [factories])
+
   const load = async () => {
+    if (!factoryId) return
     setLoading(true)
     try {
-      const data = await fetchSalesEntries({ fiscal_year: fiscalYear })
+      const data = await fetchSalesEntries({ fiscal_year: fiscalYear, factory_id: factoryId })
       setEntries(data)
     } finally {
       setLoading(false)
@@ -84,7 +93,7 @@ export default function OwnerSalesPage() {
 
   useEffect(() => {
     load()
-  }, [fiscalYear])
+  }, [fiscalYear, factoryId])
 
   const entryForMonth = useMemo(() => {
     return entries.find(e => Number(e.month) === Number(month)) ?? null
@@ -188,6 +197,7 @@ export default function OwnerSalesPage() {
       await saveSalesEntry({
         fiscal_year: fiscalYear,
         month,
+        factory_id: factoryId,
         notes: notes.trim() || null,
         turnover: turnoverPrice ?? null,
         lines: [
@@ -219,132 +229,88 @@ export default function OwnerSalesPage() {
     await load()
   }
 
-  const downloadXlsx = async (scope: 'fy' | 'month') => {
-    const wb = new ExcelJS.Workbook()
-    wb.creator = 'ChemFactory Portal'
-    const ws = wb.addWorksheet(scope === 'fy' ? `${fiscalYear} Sales` : `${monthLabel(month)} Sales`)
+  const downloadPdf = (scope: 'fy' | 'month') => {
+    const tableStyle = `
+      body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 24px; }
+      h2 { margin-bottom: 4px; font-size: 16px; }
+      p { margin-bottom: 12px; color: #555; font-size: 11px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+      th { background: #111827; color: #e5e7eb; padding: 7px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+      td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; }
+      tr.total-row td { background: #fef9c3; font-weight: bold; }
+      tr.turnover-row td { background: #fde68a; font-weight: bold; }
+      tr.month-header td { background: #f3f4f6; font-weight: bold; color: #374151; }
+      tr.spacer td { height: 12px; border: none; background: transparent; }
+      @media print { body { margin: 12px; } }
+    `
 
-    const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } } as const // yellow
-    const turnoverFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF59E0B' } } as const // orange
-    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF111827' } } as const
-
-    const currencyFmt = '₹#,##0.00'
-    const qtyFmt = '#,##0.00'
-
-    const addHeader = (withFyMonth: boolean) => {
-      const cols = withFyMonth
-        ? ['FY', 'Month', 'Product', 'Price (₹)', 'Quantity (KG)']
-        : ['Product', 'Price (₹)', 'Quantity (KG)']
-      const row = ws.addRow(cols)
-      row.font = { bold: true, color: { argb: 'FFE5E7EB' } }
-      row.fill = headerFill
-      row.alignment = { vertical: 'middle' }
-      row.height = 18
-      ws.getRow(row.number).eachCell(c => {
-        c.border = { bottom: { style: 'thin', color: { argb: 'FF374151' } } }
-      })
-    }
-
-    const monthEntry = (e: SalesEntry) => {
+    const monthEntryRows = (e: SalesEntry) => {
       const allLines = (e.sales_entry_lines ?? []).slice()
       const products = allLines.filter(l => normalizeName(l.product_name) !== 'turnover')
       const turnover = allLines.find(l => normalizeName(l.product_name) === 'turnover')
-
       const totalPrice = products.reduce((s, l) => s + Number(l.price_rupees ?? 0), 0)
       const totalKg = products.reduce((s, l) => s + Number(l.quantity_kg ?? 0), 0)
-
       return { products, turnover, totals: { price: totalPrice, kg: totalKg } }
     }
 
-    const styleMoneyQty = (rowNumber: number, withFyMonth: boolean) => {
-      const priceCol = withFyMonth ? 4 : 2
-      const qtyCol = withFyMonth ? 5 : 3
-      ws.getCell(rowNumber, priceCol).numFmt = currencyFmt
-      ws.getCell(rowNumber, qtyCol).numFmt = qtyFmt
-    }
+    const fmt = (v: number | null | undefined, prefix = '') =>
+      v !== null && v !== undefined ? `${prefix}${Number(v).toFixed(2)}` : '—'
 
-    const addLine = (withFyMonth: boolean, fy: string | null, m: number | null, product: string, price: number | null, qty: number | null, fill?: any) => {
-      const rowVals = withFyMonth
-        ? [fy ?? '', m ?? '', product, price ?? null, qty ?? null]
-        : [product, price ?? null, qty ?? null]
-      const row = ws.addRow(rowVals)
-      row.alignment = { vertical: 'middle' }
-      if (fill) {
-        row.eachCell(c => { c.fill = fill })
-        row.font = { bold: true }
-      }
-      styleMoneyQty(row.number, withFyMonth)
-      return row
-    }
+    let tableHtml = ''
 
     if (scope === 'month') {
-      // Monthly: no FY/Month columns
-      addHeader(false)
-
-      const e = entryForMonth
-      if (e) {
-        const { products, turnover, totals } = monthEntry(e)
-        products.forEach(p => addLine(false, null, null, p.product_name, p.price_rupees ?? null, p.quantity_kg ?? null))
-        addLine(false, null, null, 'Total (Auto Calculated)', totals.price, totals.kg, totalFill)
-        addLine(false, null, null, 'Turnover', turnover?.price_rupees ?? e.turnover ?? null, null, turnoverFill)
+      tableHtml = `
+        <table>
+          <thead><tr><th>Product</th><th>Price (₹)</th><th>Quantity (KG)</th></tr></thead>
+          <tbody>
+      `
+      if (entryForMonth) {
+        const { products, turnover, totals } = monthEntryRows(entryForMonth)
+        products.forEach(p => {
+          tableHtml += `<tr><td>${p.product_name}</td><td>${fmt(p.price_rupees, '₹')}</td><td>${fmt(p.quantity_kg)}</td></tr>`
+        })
+        tableHtml += `<tr class="total-row"><td>Total (Auto Calculated)</td><td>₹${totals.price.toFixed(2)}</td><td>${totals.kg.toFixed(2)}</td></tr>`
+        tableHtml += `<tr class="turnover-row"><td>Turnover</td><td>${fmt(turnover?.price_rupees ?? entryForMonth.turnover, '₹')}</td><td>—</td></tr>`
       }
-
-      ws.columns = [
-        { width: 32 },
-        { width: 16 },
-        { width: 16 },
-      ]
+      tableHtml += `</tbody></table>`
     } else {
-      // Yearly: show FY + month only once (per month block) + blank row between months
-      addHeader(true)
-
+      tableHtml = `
+        <table>
+          <thead><tr><th>FY</th><th>Month</th><th>Product</th><th>Price (₹)</th><th>Quantity (KG)</th></tr></thead>
+          <tbody>
+      `
       const byMonth = new Map<number, SalesEntry>()
       entries.forEach(e => byMonth.set(Number(e.month), e))
 
       monthOptions.forEach((mo, idx) => {
         const e = byMonth.get(Number(mo.value))
         if (!e) return
-        const { products, turnover, totals } = monthEntry(e)
+        const { products, turnover, totals } = monthEntryRows(e)
 
-        // Month block: FY only on first line; Month only on first line
-        const firstRow = products[0] ?? null
-        if (firstRow) {
-          addLine(true, fiscalYear, mo.value, firstRow.product_name, firstRow.price_rupees ?? null, firstRow.quantity_kg ?? null)
-          products.slice(1).forEach(p => addLine(true, null, null, p.product_name, p.price_rupees ?? null, p.quantity_kg ?? null))
-        } else {
-          // still show block header even if no products
-          addLine(true, fiscalYear, mo.value, '(no products)', null, null)
-        }
-
-        addLine(true, null, null, 'Total (Auto Calculated)', totals.price, totals.kg, totalFill)
-        addLine(true, null, null, 'Turnover', turnover?.price_rupees ?? e.turnover ?? null, null, turnoverFill)
-
-        // spacer row between months (except after last included)
-        if (idx < monthOptions.length - 1) ws.addRow([])
+        tableHtml += `<tr class="month-header"><td>${fiscalYear}</td><td>${mo.label}</td><td colspan="3"></td></tr>`
+        products.forEach(p => {
+          tableHtml += `<tr><td></td><td></td><td>${p.product_name}</td><td>${fmt(p.price_rupees, '₹')}</td><td>${fmt(p.quantity_kg)}</td></tr>`
+        })
+        tableHtml += `<tr class="total-row"><td></td><td></td><td>Total (Auto Calculated)</td><td>₹${totals.price.toFixed(2)}</td><td>${totals.kg.toFixed(2)}</td></tr>`
+        tableHtml += `<tr class="turnover-row"><td></td><td></td><td>Turnover</td><td>${fmt(turnover?.price_rupees ?? e.turnover, '₹')}</td><td>—</td></tr>`
+        if (idx < monthOptions.length - 1) tableHtml += `<tr class="spacer"><td colspan="5"></td></tr>`
       })
-
-      ws.columns = [
-        { width: 12 },
-        { width: 8 },
-        { width: 32 },
-        { width: 16 },
-        { width: 16 },
-      ]
+      tableHtml += `</tbody></table>`
     }
 
-    // Freeze header
-    ws.views = [{ state: 'frozen', ySplit: 1 }]
+    const title = scope === 'fy'
+      ? `${fiscalYear} — Sales Report`
+      : `${fiscalYear} · ${monthLabel(month)} — Sales Report`
 
-    const buf = await wb.xlsx.writeBuffer()
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = scope === 'fy'
-      ? `${fiscalYear}_SALES.xlsx`
-      : `${fiscalYear}_${monthLabel(month)}_SALES.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>${tableStyle}</style></head>
+      <body><h2>${title}</h2><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>${tableHtml}</body></html>`
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
   }
 
   return (
@@ -356,10 +322,10 @@ export default function OwnerSalesPage() {
           accent="owner"
           actions={
             <div className="flex gap-2 flex-wrap">
-              <button className="btn btn-owner-secondary gap-2" onClick={() => downloadXlsx('month')} disabled={!entryForMonth}>
+              <button className="btn btn-owner-secondary gap-2" onClick={() => downloadPdf('month')} disabled={!entryForMonth}>
                 <Download size={16} /> Download Monthly
               </button>
-              <button className="btn btn-owner gap-2" onClick={() => downloadXlsx('fy')}>
+              <button className="btn btn-owner gap-2" onClick={() => downloadPdf('fy')}>
                 <Download size={16} /> Download FY
               </button>
             </div>
@@ -367,7 +333,14 @@ export default function OwnerSalesPage() {
         />
 
         {/* Filters + entry actions */}
-        <div className="card p-4 md:p-6 mb-6 grid gap-4 md:grid-cols-4 items-end">
+        <div className="card p-4 md:p-6 mb-6 grid gap-4 md:grid-cols-5 items-end">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-muted font-mono">Factory</label>
+            <select value={factoryId} onChange={e => setFactoryId(e.target.value)} className="input">
+              {factories.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+
           <div className="flex flex-col gap-2">
             <label className="text-xs text-muted font-mono">Financial Year</label>
             <select value={fiscalYear} onChange={e => setFiscalYear(e.target.value)} className="input">

@@ -7,6 +7,7 @@ export type SalesEntry = {
   id?: string
   fiscal_year: string
   month: number
+  factory_id?: string
   turnover?: number | null
   pntosa?: number | null
   hydrazone?: number | null
@@ -33,9 +34,9 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export async function fetchSalesEntries(params: { fiscal_year: string }) {
+export async function fetchSalesEntries(params: { fiscal_year: string; factory_id: string }) {
   const headers = await authHeaders()
-  const qs = new URLSearchParams({ fiscal_year: params.fiscal_year })
+  const qs = new URLSearchParams({ fiscal_year: params.fiscal_year, factory_id: params.factory_id })
   const res = await fetch(`/api/sales?${qs.toString()}`, { headers })
   const json: ApiResponse<{ entries: SalesEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch sales entries')
@@ -43,7 +44,7 @@ export async function fetchSalesEntries(params: { fiscal_year: string }) {
 }
 
 export type SaveSalesEntryPayload =
-  Pick<SalesEntry, 'fiscal_year' | 'month' | 'notes' | 'turnover' | 'pntosa' | 'hydrazone'> & {
+  Pick<SalesEntry, 'fiscal_year' | 'month' | 'factory_id' | 'notes' | 'turnover' | 'pntosa' | 'hydrazone'> & {
     created_by: string
     lines?: Array<Pick<SalesEntryLine, 'product_name' | 'price_rupees' | 'quantity_kg'>>
   }

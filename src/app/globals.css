@@ -9,8 +9,8 @@
   --font-exo2: 'Times New Roman', serif;
 }
 
-/* ── DARK THEME (default) ────────────────────────── */
-:root, [data-theme="dark"] {
+/* ── DARK THEME ──────────────────────────────────── */
+[data-theme="dark"] {
   --color-bg:      #0a0d12;
   --color-panel:   #0f1520;
   --color-surface: #131c2b;
@@ -33,8 +33,8 @@
   --glow-chemist: 0 0 0 1px rgba(0,229,160,0.3),   0 4px 20px rgba(0,229,160,0.1);
 }
 
-/* ── LIGHT THEME ─────────────────────────────────── */
-[data-theme="light"] {
+/* ── LIGHT THEME (default) ───────────────────────── */
+:root, [data-theme="light"] {
   --color-bg:      #edf2f7;
   --color-panel:   #ffffff;
   --color-surface: #f4f7fb;
