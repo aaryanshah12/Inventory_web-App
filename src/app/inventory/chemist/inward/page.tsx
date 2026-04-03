@@ -8,21 +8,21 @@ import { useAuth } from '@/hooks/useAuth'
 import { deleteInwardEntry, fetchInwardEntries, InwardEntry, saveInwardEntry, totalsForInward, toInwardCsv } from '@/lib/inward'
 import { Download, Save, Trash2 } from 'lucide-react'
 import { fetchInOutProducts, InOutProduct } from '@/lib/inoutProducts'
-import { currentYearMonth, monthOptions, monthRangeISO, yearOptions } from '@/lib/monthFilter'
+import { calendarYearForFy, currentFinancialYear, financialYearOptions, fyLabel, monthOptions, monthRangeISO } from '@/lib/monthFilter'
 
 export default function ChemistInwardPage() {
   const { profile } = useAuth()
   const factories = useMemo(() => profile?.factories ?? [], [profile])
   const factoryIds = useMemo(() => factories.map((f: any) => f.id).filter(Boolean), [factories])
-  const { year: defaultYear, month: defaultMonth } = useMemo(() => currentYearMonth(), [])
-  const years = useMemo(() => yearOptions(6), [])
+  const { fyStart: defaultFyStart, month: defaultMonth } = useMemo(() => currentFinancialYear(), [])
+  const fyOptions = useMemo(() => financialYearOptions(6), [])
 
   const [entries, setEntries] = useState<InwardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [products, setProducts] = useState<InOutProduct[]>([])
-  const [year, setYear] = useState<number>(defaultYear)
+  const [fyStart, setFyStart] = useState<number>(defaultFyStart)
   const [month, setMonth] = useState<number>(defaultMonth)
   const [form, setForm] = useState<InwardEntry>({
     factory_id: '',
@@ -40,13 +40,14 @@ export default function ChemistInwardPage() {
   const load = async () => {
     if (!profile) return
     setLoading(true)
-    const range = monthRangeISO(year, month)
+    const calYear = calendarYearForFy(fyStart, month)
+    const range = monthRangeISO(calYear, month)
     const data = await fetchInwardEntries({ factoryIds, from: range.from, to: range.to })
     setEntries(data)
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [profile, factoryIds.join(','), year, month])
+  useEffect(() => { load() }, [profile, factoryIds.join(','), fyStart, month])
 
   useEffect(() => {
     if (!profile) return
@@ -133,7 +134,7 @@ export default function ChemistInwardPage() {
     const a = document.createElement('a')
     a.href = url
     const monthLabel = monthOptions.find(m => m.value === month)?.label ?? String(month)
-    a.download = `Inward_${year}_${monthLabel}.csv`
+    a.download = `Inward_FY${fyLabel(fyStart)}_${monthLabel}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -159,9 +160,9 @@ export default function ChemistInwardPage() {
 
         <div className="card p-4 md:p-6 mb-4 grid gap-4 md:grid-cols-3 items-end">
           <div className="flex flex-col gap-2">
-            <label className="text-xs text-muted font-mono">Year</label>
-            <select value={year} onChange={e => setYear(Number(e.target.value))} className="input">
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            <label className="text-xs text-muted font-mono">Financial Year</label>
+            <select value={fyStart} onChange={e => setFyStart(Number(e.target.value))} className="input">
+              {fyOptions.map(y => <option key={y} value={y}>{fyLabel(y)}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-2">

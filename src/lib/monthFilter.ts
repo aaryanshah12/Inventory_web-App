@@ -23,6 +23,29 @@ export function yearOptions(back = 6) {
   return Array.from({ length: back }, (_, i) => y - i)
 }
 
+// Financial Year helpers (India: April–March)
+export function currentFinancialYear() {
+  const d = new Date()
+  const month = d.getMonth() + 1
+  const fyStart = month >= 4 ? d.getFullYear() : d.getFullYear() - 1
+  return { fyStart, month }
+}
+
+export function financialYearOptions(back = 6) {
+  const d = new Date()
+  const month = d.getMonth() + 1
+  const currentFyStart = month >= 4 ? d.getFullYear() : d.getFullYear() - 1
+  return Array.from({ length: back }, (_, i) => currentFyStart - i)
+}
+
+export function fyLabel(fyStart: number) {
+  return `${fyStart}-${String(fyStart + 1).slice(-2)}`
+}
+
+export function calendarYearForFy(fyStart: number, month: number) {
+  return month >= 4 ? fyStart : fyStart + 1
+}
+
 export function monthRangeISO(year: number, month: number) {
   // month: 1-12
   const from = new Date(Date.UTC(year, month - 1, 1))
