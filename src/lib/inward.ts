@@ -28,7 +28,7 @@ export async function fetchInwardEntries(params: { factoryIds?: string[]; from?:
   if (params.factoryIds && params.factoryIds.length > 0) qs.set('factoryIds', params.factoryIds.join(','))
   if (params.from) qs.set('from', params.from)
   if (params.to) qs.set('to', params.to)
-  const url = qs.toString().length ? `/api/inward?${qs.toString()}` : '/api/inward'
+  const url = qs.toString().length ? `/api/inventory/inward?${qs.toString()}` : '/api/inventory/inward'
   const res = await fetch(url, { headers })
   const json: ApiResponse<{ entries: InwardEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch inward entries')
@@ -37,7 +37,7 @@ export async function fetchInwardEntries(params: { factoryIds?: string[]; from?:
 
 export async function saveInwardEntry(entry: InwardEntry & { created_by: string }) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/inward', {
+  const res = await fetch('/api/inventory/inward', {
     method: 'POST',
     headers,
     body: JSON.stringify(entry),
@@ -49,7 +49,7 @@ export async function saveInwardEntry(entry: InwardEntry & { created_by: string 
 
 export async function deleteInwardEntry(id: string) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/inward', {
+  const res = await fetch('/api/inventory/inward', {
     method: 'DELETE',
     headers,
     body: JSON.stringify({ id }),

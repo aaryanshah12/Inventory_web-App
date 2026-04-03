@@ -35,7 +35,7 @@ export async function fetchOutwardEntries(params: { factoryIds?: string[]; from?
   if (params.factoryIds && params.factoryIds.length > 0) qs.set('factoryIds', params.factoryIds.join(','))
   if (params.from) qs.set('from', params.from)
   if (params.to) qs.set('to', params.to)
-  const url = qs.toString().length ? `/api/outward?${qs.toString()}` : '/api/outward'
+  const url = qs.toString().length ? `/api/inventory/outward?${qs.toString()}` : '/api/inventory/outward'
   const res = await fetch(url, { headers })
   const json: ApiResponse<{ entries: OutwardEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch outward entries')
@@ -44,7 +44,7 @@ export async function fetchOutwardEntries(params: { factoryIds?: string[]; from?
 
 export async function saveOutwardEntry(entry: OutwardEntry & { created_by: string }) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/outward', {
+  const res = await fetch('/api/inventory/outward', {
     method: 'POST',
     headers,
     body: JSON.stringify(entry),
@@ -56,7 +56,7 @@ export async function saveOutwardEntry(entry: OutwardEntry & { created_by: strin
 
 export async function deleteOutwardEntry(id: string) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/outward', {
+  const res = await fetch('/api/inventory/outward', {
     method: 'DELETE',
     headers,
     body: JSON.stringify({ id }),

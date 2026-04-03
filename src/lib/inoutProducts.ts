@@ -26,7 +26,7 @@ export async function fetchInOutProducts(params: { kind: InOutKind; factory_id?:
   const qs = new URLSearchParams({ kind: params.kind })
   if (params.factory_id) qs.set('factory_id', params.factory_id)
   if (params.include_inactive) qs.set('include_inactive', 'true')
-  const res = await fetch(`/api/inout-products?${qs.toString()}`, { headers })
+  const res = await fetch(`/api/inventory/inout-products?${qs.toString()}`, { headers })
   const json: ApiResponse<{ products: InOutProduct[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch products')
   return json.products ?? []
@@ -34,7 +34,7 @@ export async function fetchInOutProducts(params: { kind: InOutKind; factory_id?:
 
 export async function createInOutProduct(input: { factory_id: string; kind: InOutKind; name: string }) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/inout-products', {
+  const res = await fetch('/api/inventory/inout-products', {
     method: 'POST',
     headers,
     body: JSON.stringify(input),
@@ -46,7 +46,7 @@ export async function createInOutProduct(input: { factory_id: string; kind: InOu
 
 export async function updateInOutProduct(input: { id: string; is_active?: boolean; name?: string }) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/inout-products', {
+  const res = await fetch('/api/inventory/inout-products', {
     method: 'PATCH',
     headers,
     body: JSON.stringify(input),

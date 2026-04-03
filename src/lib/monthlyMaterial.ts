@@ -74,7 +74,7 @@ export async function fetchMonthlyEntries(params: { fiscal_year: string; month: 
   if (params.factoryIds && params.factoryIds.length > 0) {
     qs.set('factoryIds', params.factoryIds.join(','))
   }
-  const res = await fetch(`/api/monthly-material?${qs.toString()}`, { headers })
+  const res = await fetch(`/api/inventory/monthly-material?${qs.toString()}`, { headers })
   const json: ApiResponse<{ entries: MonthlyEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch entries')
   const entries = json.entries ?? []
@@ -90,7 +90,7 @@ export async function fetchMonthlyEntries(params: { fiscal_year: string; month: 
 export async function saveMonthlyEntry(entry: MonthlyEntry) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
   const isUpdate = Boolean(entry.id)
-  const res = await fetch('/api/monthly-material', {
+  const res = await fetch('/api/inventory/monthly-material', {
     method: isUpdate ? 'PATCH' : 'POST',
     headers,
     body: JSON.stringify(entry),
@@ -102,7 +102,7 @@ export async function saveMonthlyEntry(entry: MonthlyEntry) {
 
 export async function deleteMonthlyEntry(id: string) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/monthly-material', {
+  const res = await fetch('/api/inventory/monthly-material', {
     method: 'DELETE',
     headers,
     body: JSON.stringify({ id }),

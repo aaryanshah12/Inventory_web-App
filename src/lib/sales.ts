@@ -37,7 +37,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 export async function fetchSalesEntries(params: { fiscal_year: string; factory_id: string }) {
   const headers = await authHeaders()
   const qs = new URLSearchParams({ fiscal_year: params.fiscal_year, factory_id: params.factory_id })
-  const res = await fetch(`/api/sales?${qs.toString()}`, { headers })
+  const res = await fetch(`/api/inventory/sales?${qs.toString()}`, { headers })
   const json: ApiResponse<{ entries: SalesEntry[] }> = await res.json()
   if (!res.ok) throw new Error(json.error || 'Failed to fetch sales entries')
   return json.entries ?? []
@@ -51,7 +51,7 @@ export type SaveSalesEntryPayload =
 
 export async function saveSalesEntry(entry: SaveSalesEntryPayload) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/sales', {
+  const res = await fetch('/api/inventory/sales', {
     method: 'POST',
     headers,
     body: JSON.stringify(entry),
@@ -63,7 +63,7 @@ export async function saveSalesEntry(entry: SaveSalesEntryPayload) {
 
 export async function deleteSalesEntry(id: string) {
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) }
-  const res = await fetch('/api/sales', {
+  const res = await fetch('/api/inventory/sales', {
     method: 'DELETE',
     headers,
     body: JSON.stringify({ id }),
