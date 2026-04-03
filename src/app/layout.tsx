@@ -4,7 +4,7 @@ import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
   title: 'Vidhi Hexa Chem',
-  description: 'Chemical Factory Stock Management System',
+  description: 'Trusted source for dye intermediates.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
