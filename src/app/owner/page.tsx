@@ -56,13 +56,20 @@ export default function OwnerDashboard() {
     setDrilldownLoading(false)
   }
 
-  const totals = summaries.reduce((acc, s) => ({
-    loaded:   acc.loaded   + Number(s.total_tons_loaded),
-    used:     acc.used     + Number(s.total_tons_used),
-    balance:  acc.balance  + Number(s.closing_balance),
-    value:    acc.value    + Number(s.total_stock_value),
-    invoices: acc.invoices + Number(s.total_invoices),
-  }), { loaded: 0, used: 0, balance: 0, value: 0, invoices: 0 })
+  const totals = summaries.reduce((acc, s) => {
+    const loaded = Number(s.total_tons_loaded)
+    const balance = Number(s.closing_balance)
+    const value = Number(s.total_stock_value)
+    const remainingValue = loaded > 0 ? (balance / loaded) * value : 0
+    return {
+      loaded:         acc.loaded         + loaded,
+      used:           acc.used           + Number(s.total_tons_used),
+      balance:        acc.balance        + balance,
+      value:          acc.value          + value,
+      remainingValue: acc.remainingValue + remainingValue,
+      invoices:       acc.invoices       + Number(s.total_invoices),
+    }
+  }, { loaded: 0, used: 0, balance: 0, value: 0, remainingValue: 0, invoices: 0 })
 
   const chartData = summaries.map(s => ({
     name: s.factory_name.replace('Factory ', ''),
@@ -95,7 +102,7 @@ export default function OwnerDashboard() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
           <StatCard
             label="Total KGS Loaded"
             value={totals.loaded.toFixed(1)}
@@ -115,6 +122,7 @@ export default function OwnerDashboard() {
             actionLabel="View breakdown"
           />
           <StatCard label="Total Stock Value"  value={`₹${(totals.value/100000).toFixed(1)}L`} sub={`${totals.invoices} invoices`} icon={<Factory size={18}/>} color="muted" />
+          <StatCard label="Stock Remaining Value" value={`₹${(totals.remainingValue/100000).toFixed(1)}L`} sub="Est. value of balance stock" icon={<AlertTriangle size={18}/>} color="owner" />
         </div>
 
         {/* Chart + Factory table */}

@@ -84,7 +84,7 @@ body {
 }
 
 /* ── INPUT ───────────────────────────────────────── */
-.input-field {
+.input-field, .input {
   @apply w-full rounded-lg px-4 py-3 text-sm outline-none transition-all duration-200;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -95,9 +95,9 @@ body {
   border-color: color-mix(in srgb, var(--color-border) 90%, transparent);
 }
 .input-dark::placeholder { color: color-mix(in srgb, var(--color-muted) 85%, transparent); }
-.input-field::placeholder { color: var(--color-muted); }
-.input-field:focus { border-color: var(--color-inputer); box-shadow: 0 0 0 2px rgba(0,194,255,0.15); }
-.input-field.owner-focus:focus   { border-color: var(--color-owner);   box-shadow: 0 0 0 2px rgba(240,165,0,0.15); }
+.input-field::placeholder, .input::placeholder { color: var(--color-muted); }
+.input-field:focus, .input:focus { border-color: var(--color-inputer); box-shadow: 0 0 0 2px rgba(0,194,255,0.15); }
+.input-field.owner-focus:focus, .input.owner-focus:focus { border-color: var(--color-owner);   box-shadow: 0 0 0 2px rgba(240,165,0,0.15); }
 .input-field.chemist-focus:focus { border-color: var(--color-chemist); box-shadow: 0 0 0 2px rgba(0,229,160,0.15); }
 
 /* ── CARD ────────────────────────────────────────── */

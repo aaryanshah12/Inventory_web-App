@@ -300,7 +300,7 @@ export default function ChemistInwardPage() {
           {hasDate && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted font-mono">TONS (in Kg)</label>
-              <input className="input-field input-dark chemist-focus" type="number" step="0.001" value={form.tons ?? 0} onChange={e => setForm(f => ({ ...f, tons: parseNumber(e.target.value) }))} />
+              <input className="input-field input-dark chemist-focus" type="number" step="0.001" placeholder="0" value={form.tons || ''} onChange={e => setForm(f => ({ ...f, tons: parseNumber(e.target.value) }))} />
             </div>
           )}
         </div>

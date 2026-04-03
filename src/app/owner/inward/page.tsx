@@ -317,7 +317,8 @@ export default function OwnerInwardPage() {
                 className="input"
                 type="number"
                 step="0.001"
-                value={form.tons ?? 0}
+                placeholder="0"
+                value={form.tons || ''}
                 onChange={e => setForm(f => ({ ...f, tons: parseNumber(e.target.value) }))}
               />
             </div>

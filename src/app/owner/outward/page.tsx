@@ -103,11 +103,7 @@ export default function OwnerOutwardPage() {
       product_id: firstProductId,
       entry_date: new Date().toISOString().split('T')[0],
       batch_no: '',
-      no_of_bags: 0,
-      as_is: 0,
-      purity: 0,
-      real: 0,
-    })
+    } as OutwardEntry)
     setModalOpen(true)
   }
 
@@ -350,21 +346,21 @@ export default function OwnerOutwardPage() {
           {hasBatch && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted font-mono">No. of Bags</label>
-              <input className="input" type="number" value={form.no_of_bags ?? 0} onChange={e => setForm(f => ({ ...f, no_of_bags: parseNumber(e.target.value) }))} />
+              <input className="input" type="number" placeholder="0" value={form.no_of_bags || ''} onChange={e => setForm(f => ({ ...f, no_of_bags: parseNumber(e.target.value) }))} />
             </div>
           )}
 
           {hasBags && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted font-mono">As is (Kg)</label>
-              <input className="input" type="number" step="0.01" value={form.as_is ?? 0} onChange={e => setForm(f => ({ ...f, as_is: parseNumber(e.target.value) }))} />
+              <input className="input" type="number" step="0.01" placeholder="0" value={form.as_is || ''} onChange={e => setForm(f => ({ ...f, as_is: parseNumber(e.target.value) }))} />
             </div>
           )}
 
           {hasAsIs && (
             <div className="flex flex-col gap-1">
               <label className="text-xs text-muted font-mono">Purity (%)</label>
-              <input className="input" type="number" step="0.01" value={form.purity ?? 0} onChange={e => setForm(f => ({ ...f, purity: parseNumber(e.target.value) }))} />
+              <input className="input" type="number" step="0.01" placeholder="0" value={form.purity || ''} onChange={e => setForm(f => ({ ...f, purity: parseNumber(e.target.value) }))} />
             </div>
           )}
 
