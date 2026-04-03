@@ -1,10 +1,110 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, X, Mail, Phone, MapPin, Linkedin } from 'lucide-react'
+import { Menu, X, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+type Point = { cx: number; cy: number }
+type Country = Point & { name: string }
 type Product = { sr: number; name: string; fullname: string; mw: string; cas: string; purity: string }
+
+// ─── WORLD MAP ───────────────────────────────────────────────────────────────
+const WorldMapSVG = () => {
+  const hub: Point = { cx: 890, cy: 255 }
+
+  const countries: Country[] = [
+    { name: 'CANADA',     cx: 175,  cy: 175 },
+    { name: 'USA',        cx: 140,  cy: 215 },
+    { name: 'BRAZIL',     cx: 230,  cy: 325 },
+    { name: 'POLAND',     cx: 435,  cy: 195 },
+    { name: 'ITALY',      cx: 415,  cy: 220 },
+    { name: 'TURKEY',     cx: 472,  cy: 205 },
+    { name: 'EGYPT',      cx: 450,  cy: 240 },
+    { name: 'BANGLADESH', cx: 930,  cy: 240 },
+    { name: 'CHINA',      cx: 985,  cy: 185 },
+    { name: 'TAIWAN',     cx: 1020, cy: 210 },
+    { name: 'JAPAN',      cx: 1065, cy: 180 },
+    { name: 'THAILAND',   cx: 955,  cy: 275 },
+    { name: 'INDONESIA',  cx: 1020, cy: 305 },
+    { name: 'AUSTRALIA',  cx: 1065, cy: 380 },
+  ]
+
+  const getCurvePath = (from: Point, to: Point): string => {
+    const mx = (from.cx + to.cx) / 2
+    const my = (from.cy + to.cy) / 2
+    const dx = to.cx - from.cx
+    const dy = to.cy - from.cy
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const arcY = my - dist * 0.18
+    return `M ${from.cx} ${from.cy} Q ${mx} ${arcY} ${to.cx} ${to.cy}`
+  }
+
+  const dots: [number, number][] = []
+  const step = 11
+
+  // North America
+  for (let x = 95; x <= 335; x += step) for (let y = 140; y <= 295; y += step) {
+    if (x > 95 + (y - 140) * 0.12 && x < 335 - (y - 200) * 0.25 && !(x > 280 && y > 240)) dots.push([x, y])
+  }
+  // South America
+  for (let x = 165; x <= 300; x += step) for (let y = 305; y <= 440; y += step) {
+    if (x > 165 + (y - 305) * 0.06 && x < 300 - (y - 370) * 0.07) dots.push([x, y])
+  }
+  // Europe
+  for (let x = 380; x <= 570; x += step) for (let y = 148; y <= 250; y += step) {
+    if (x < 570 - (y - 200) * 0.3 && !(x > 530 && y < 165)) dots.push([x, y])
+  }
+  // Africa
+  for (let x = 410; x <= 600; x += step) for (let y = 258; y <= 455; y += step) {
+    if (x > 410 + (y - 380) * 0.1 && x < 600 - (y - 400) * 0.05) dots.push([x, y])
+  }
+  // Asia
+  for (let x = 590; x <= 1145; x += step) for (let y = 140; y <= 320; y += step) {
+    if (!(x > 620 && x < 680 && y > 270)) dots.push([x, y])
+  }
+  // SE Asia islands — FIXED: loop condition was swapped
+  for (let x = 940; x <= 1100; x += step) for (let y = 328; y <= 400; y += step) {
+    if (x < 1000 || (x > 1020 && x < 1070) || x > 1085) dots.push([x, y])
+  }
+  // Australia
+  for (let x = 970; x <= 1140; x += step) for (let y = 365; y <= 460; y += step) {
+    if (x < 1135 - (y - 430) * 0.3) dots.push([x, y])
+  }
+
+  const PinBlue = ({ cx, cy }: Point) => (
+    <g transform={`translate(${cx - 7}, ${cy - 20})`}>
+      <path d="M7 0 C3.1 0 0 3.1 0 7 C0 12.25 7 20 7 20 C7 20 14 12.25 14 7 C14 3.1 10.9 0 7 0Z" fill="#1E3A8A" />
+      <circle cx="7" cy="7" r="3" fill="white" />
+    </g>
+  )
+
+  return (
+    <svg viewBox="0 0 1160 480" className="w-full" xmlns="http://www.w3.org/2000/svg"
+      style={{ background: '#eeeeee', borderRadius: '10px' }}>
+      {dots.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="2.5" fill="#bbbbbb" />
+      ))}
+      {countries.map((c, i) => (
+        <path key={i} d={getCurvePath(hub, c)} fill="none" stroke="#888888" strokeWidth="1.2" opacity="0.75" />
+      ))}
+      {countries.map((c, i) => (
+        <g key={i}>
+          <PinBlue cx={c.cx} cy={c.cy} />
+          <text x={c.cx} y={c.cy + 10} fontSize="9.5" fontWeight="700"
+            textAnchor="middle" fill="#1E3A8A" fontFamily="Arial, sans-serif">
+            {c.name}
+          </text>
+        </g>
+      ))}
+      <g transform={`translate(${hub.cx - 11}, ${hub.cy - 30})`}>
+        <path d="M11 0 C4.9 0 0 4.9 0 11 C0 19.25 11 31 11 31 C11 31 22 19.25 22 11 C22 4.9 17.1 0 11 0Z" fill="#DC2626" />
+        <circle cx="11" cy="11" r="4.5" fill="white" />
+      </g>
+      <text x={hub.cx + 14} y={hub.cy + 3} fontSize="12" fontWeight="900"
+        fill="#DC2626" fontFamily="Arial, sans-serif" letterSpacing="0.5">INDIA</text>
+    </svg>
+  )
+}
 
 // ─── CHEMICAL STRUCTURE SVGs ─────────────────────────────────────────────────
 const structures: Record<number, () => JSX.Element> = {
@@ -280,22 +380,7 @@ const structures: Record<number, () => JSX.Element> = {
 const InquiryModal = ({ product, onClose }: { product: Product | null; onClose: () => void }) => {
   const [form, setForm] = useState({ name: '', email: '', company: '', quantity: '', message: '' })
   const [sent, setSent] = useState(false)
-  const [sending, setSending] = useState(false)
   if (!product) return null
-
-  const handleSubmit = async () => {
-    setSending(true)
-    try {
-      await fetch('/api/send-inquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'inquiry', product: `${product.name} — ${product.fullname}`, ...form }),
-      })
-    } catch (e) { console.error(e) }
-    setSending(false)
-    setSent(true)
-  }
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative overflow-hidden">
@@ -340,8 +425,8 @@ const InquiryModal = ({ product, onClose }: { product: Product | null; onClose: 
               <label className="block text-xs font-bold text-slate-700 mb-1">Message</label>
               <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={3} className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Any specific requirements..." />
             </div>
-            <button onClick={handleSubmit} disabled={sending} className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 rounded-lg transition-all duration-300 text-sm disabled:opacity-60">
-              {sending ? 'Sending…' : 'Submit Inquiry'}
+            <button onClick={() => setSent(true)} className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 rounded-lg transition-all duration-300 text-sm">
+              Submit Inquiry
             </button>
           </div>
         )}
@@ -388,7 +473,7 @@ export default function VidhiHexachemWebsite() {
   ]
 
   const Navigation = () => (
-    <nav className="sticky top-0 z-50 bg-white shadow-md">
+    <nav className="sticky top-0 z-50 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div onClick={() => { setCurrentPage('home'); setMobileMenuOpen(false) }} className="flex items-center gap-3 cursor-pointer">
@@ -397,20 +482,20 @@ export default function VidhiHexachemWebsite() {
           <div className="hidden md:flex items-center gap-8">
             {navItems.map(item => (
               <button key={item.id} onClick={() => { setCurrentPage(item.id); setMobileMenuOpen(false) }}
-                className={`text-sm font-semibold transition-all duration-300 pb-1 ${currentPage === item.id ? 'border-b-2 border-teal-500 text-teal-600' : 'text-gray-500 hover:text-gray-800'}`}>
+                className={`text-sm font-semibold transition-all duration-300 ${currentPage === item.id ? 'text-cyan-400 border-b-2 border-cyan-400 pb-1' : 'text-gray-300 hover:text-cyan-400'}`}>
                 {item.label}
               </button>
             ))}
           </div>
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-white p-2 hover:bg-slate-700 rounded-lg transition-colors">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
         {mobileMenuOpen && (
-          <div className="md:hidden pb-4 border-t border-gray-200">
+          <div className="md:hidden pb-4 border-t border-slate-700">
             {navItems.map(item => (
               <button key={item.id} onClick={() => { setCurrentPage(item.id); setMobileMenuOpen(false) }}
-                className={`block w-full text-left px-4 py-3 text-sm font-semibold transition-colors ${currentPage === item.id ? 'text-teal-600 border-l-2 border-teal-500 bg-teal-50' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
+                className={`block w-full text-left px-4 py-3 text-sm font-semibold transition-colors ${currentPage === item.id ? 'text-cyan-400 bg-slate-700' : 'text-gray-300 hover:text-cyan-400 hover:bg-slate-700'}`}>
                 {item.label}
               </button>
             ))}
@@ -451,7 +536,7 @@ export default function VidhiHexachemWebsite() {
         <p className="text-xs uppercase tracking-[0.25em] text-gray-500 text-center mb-2">WE ARE GLOBAL</p>
         <h3 className="text-4xl font-black text-center text-slate-900 mb-10">SALES NETWORK</h3>
         <div className="bg-white rounded-2xl shadow-lg p-4">
-          <img src="/map.jpg" alt="Sales Network Map" className="w-full rounded-xl" />
+          <WorldMapSVG />
         </div>
       </div>
     </section>
@@ -459,7 +544,7 @@ export default function VidhiHexachemWebsite() {
 
   const HomePage = () => (
     <div>
-      <div className="relative h-96 md:h-screen bg-cover bg-center" style={{ backgroundImage: 'url("/home-banner.jpg")' }}>
+      <div className="relative h-96 md:h-screen bg-cover bg-center" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1200&q=80")' }}>
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
         <div className="relative h-full flex items-center justify-center">
           <div className="text-center text-white z-10 px-4">
@@ -493,8 +578,12 @@ export default function VidhiHexachemWebsite() {
                 Learn More About Us
               </button>
             </div>
-            <div className="rounded-2xl overflow-hidden h-80">
-              <img src="/chemical-intermediate.jpeg" alt="Chemical Intermediates" className="w-full h-full object-cover" />
+            <div className="bg-gradient-to-br from-cyan-100 to-blue-100 rounded-2xl p-8 h-80 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-6xl mb-4">&#9878;</div>
+                <p className="text-slate-700 font-semibold text-lg">Chemical Intermediates</p>
+                <p className="text-gray-600 text-sm mt-2">Quality & Innovation</p>
+              </div>
             </div>
           </div>
         </div>
@@ -518,115 +607,13 @@ export default function VidhiHexachemWebsite() {
       </section>
       <CoreTeamSection />
       <SalesNetworkSection />
-      <section className="bg-white overflow-hidden">
-        <div className="flex flex-col md:flex-row min-h-[560px]">
-          <div className="md:w-1/2 h-80 md:h-auto">
-            <img src="/business-approach.jpg" alt="Business Approach" className="w-full h-full object-cover" />
-          </div>
-          <div className="md:w-1/2 bg-gray-50 flex items-center px-10 md:px-14 py-14">
-            <div className="w-full">
-              <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">VIDHI HEXACHEM</p>
-              <h2 className="text-3xl font-black text-slate-900 mb-8">BUSINESS APPROACH</h2>
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <div className="w-1 rounded-full bg-blue-700 flex-shrink-0 mt-1"></div>
-                  <div>
-                    <h3 className="text-blue-700 font-bold mb-1">Boundaryless Organisational Development</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">Multi-dimensional growth of the company from raw material to consumer.</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-1 rounded-full bg-blue-700 flex-shrink-0 mt-1"></div>
-                  <div>
-                    <h3 className="text-blue-700 font-bold mb-1">Empower People</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">Give opportunities to grow & empower resources at each level to help them identify their Key Performance Indicators & Authorise actions.</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-1 rounded-full bg-blue-700 flex-shrink-0 mt-1"></div>
-                  <div>
-                    <h3 className="text-blue-700 font-bold mb-1">Make Key Choices to Reposition</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">Polish our strengths, overcome our weaknesses, capture all opportunities and defend against the threats.</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-1 rounded-full bg-blue-700 flex-shrink-0 mt-1"></div>
-                  <div>
-                    <h3 className="text-blue-700 font-bold mb-1">Customer-Centric Innovation</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">Continuously evolve our product portfolio and processes to meet and exceed evolving customer expectations across global markets.</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-1 rounded-full bg-blue-700 flex-shrink-0 mt-1"></div>
-                  <div>
-                    <h3 className="text-blue-700 font-bold mb-1">Sustainable & Responsible Growth</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">Operate with strict environmental standards — minimising waste, reducing emissions, and delivering chemistry that is safe for people and the planet.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="py-16 bg-gray-100">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row rounded-2xl overflow-hidden shadow-xl">
-            {/* Left — info panel */}
-            <div className="md:w-5/12 bg-[#1a3a6b] text-white p-10 flex flex-col justify-between">
-              <div>
-                <h2 className="text-2xl font-black uppercase mb-6 leading-snug">Request a Free Quote</h2>
-                <p className="text-sm text-blue-100 leading-relaxed mb-4">
-                  We strongly encourage everyone to request a free sample — regardless of whether you intend to buy. We want you to test our products and verify we are the right fit for your business.
-                </p>
-                <p className="text-sm text-blue-100 leading-relaxed mb-4">
-                  Let us know the product you are interested in and we will dispatch it to you. <span className="font-semibold text-white">Delivery costs are on us!</span>
-                </p>
-                <p className="text-sm text-blue-100 leading-relaxed">
-                  Simply fill out the form and our team will get back to you within 24 hours.
-                </p>
-              </div>
-              <div className="mt-10 text-4xl opacity-20 select-none">✉</div>
-            </div>
-            {/* Right — form */}
-            <form className="md:w-7/12 bg-gray-50 p-10 flex flex-col justify-center gap-4"
-              onSubmit={async (e) => {
-                e.preventDefault()
-                const d = new FormData(e.currentTarget)
-                const btn = (e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement)
-                btn.disabled = true; btn.textContent = 'Sending…'
-                await fetch('/api/send-inquiry', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ type: 'quote', name: d.get('name'), email: d.get('email'), phone: d.get('phone'), product: d.get('product'), message: d.get('message') }),
-                })
-                btn.textContent = 'Sent ✓'; btn.className = btn.className.replace('border-[#1a3a6b] text-[#1a3a6b]', 'border-teal-600 text-teal-600')
-              }}>
-              <input name="name" type="text" required placeholder="Your Name" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-teal-500 transition-colors" />
-              <input name="email" type="email" required placeholder="Your Email" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-teal-500 transition-colors" />
-              <input name="phone" type="tel" placeholder="Mobile" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-teal-500 transition-colors" />
-              <select name="product" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-500 focus:outline-none focus:border-teal-500 transition-colors">
-                <option value="">Select Products</option>
-                {['Chemical Intermediates', 'Aminophenols', 'Sulphonic Acids', 'Aromatic Amines', 'Other'].map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <textarea name="message" rows={4} placeholder="Message" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-teal-500 transition-colors resize-none" />
-              <p className="text-xs text-gray-400">We respect your privacy.</p>
-              <button type="submit" className="self-start border-2 border-[#1a3a6b] text-[#1a3a6b] hover:bg-[#1a3a6b] hover:text-white font-bold py-2 px-8 rounded-lg transition-all duration-300 disabled:opacity-60">
-                Submit Now
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
     </div>
   )
 
   const AboutPage = () => (
     <div>
-      <div className="relative text-white py-28 bg-cover bg-center" style={{ backgroundImage: 'url("/our-team.webp")' }}>
-        <div className="absolute inset-0 bg-black/60"></div>
-        <div className="relative max-w-6xl mx-auto px-4">
+      <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white py-20">
+        <div className="max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">About Vidhi Hexachem</h1>
           <p className="text-xl text-cyan-400">Building Excellence Since 1990</p>
         </div>
@@ -643,18 +630,11 @@ export default function VidhiHexachemWebsite() {
                 Our journey spans from humble beginnings to becoming a trusted partner for hundreds of industrial clients across multiple continents.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4 h-96">
-              {[
-                { number: '30+',  label: 'Years of Experience',   bg: 'from-slate-800 to-slate-900' },
-                { number: '17',   label: 'Product Intermediates', bg: 'from-cyan-500 to-blue-600'   },
-                { number: '500+', label: 'Happy Clients',         bg: 'from-blue-600 to-indigo-700' },
-                { number: '50K+', label: 'MT Annual Capacity',    bg: 'from-teal-500 to-cyan-600'   },
-              ].map((s, i) => (
-                <div key={i} className={`bg-gradient-to-br ${s.bg} rounded-2xl flex flex-col items-center justify-center text-white shadow-lg`}>
-                  <p className="text-4xl font-black mb-1">{s.number}</p>
-                  <p className="text-xs font-semibold text-white/80 text-center px-3">{s.label}</p>
-                </div>
-              ))}
+            <div className="bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl h-96 flex items-center justify-center">
+              <div className="text-center text-white">
+                <p className="text-6xl font-black mb-2">30+</p>
+                <p className="text-2xl font-bold">Years of Excellence</p>
+              </div>
             </div>
           </div>
         </div>
@@ -665,9 +645,8 @@ export default function VidhiHexachemWebsite() {
 
   const ProductsPage = () => (
     <div>
-      <div className="relative text-white py-20 bg-cover bg-center" style={{ backgroundImage: 'url("/product-banner.jpg")' }}>
-        <div className="absolute inset-0 bg-black/60"></div>
-        <div className="relative max-w-6xl mx-auto px-4">
+      <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white py-20">
+        <div className="max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">Our Intermediate Products</h1>
           <p className="text-xl text-cyan-400">Premium chemical intermediates for dye manufacturing</p>
         </div>
@@ -733,70 +712,42 @@ export default function VidhiHexachemWebsite() {
 
   const InfrastructurePage = () => (
     <div>
-      <div className="relative text-white py-20 bg-cover bg-center" style={{ backgroundImage: 'url("/infrastructure-banner.jpg")' }}>
-        <div className="absolute inset-0 bg-black/60"></div>
-        <div className="relative max-w-6xl mx-auto px-4">
+      <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white py-20">
+        <div className="max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">Our Infrastructure</h1>
           <p className="text-xl text-cyan-400">State-of-the-art facilities and capabilities</p>
         </div>
       </div>
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-4xl font-black text-slate-900 mb-4 text-center">Manufacturing Facilities</h2>
-          <p className="text-center text-gray-500 max-w-2xl mx-auto mb-12">Our state-of-the-art plant in Anand, Gujarat is built for scale, precision, and environmental responsibility.</p>
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
+          <h2 className="text-4xl font-black text-slate-900 mb-12 text-center">Manufacturing Facilities</h2>
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
             {[
-              { title: 'Production Units',     desc: 'Multi-reactor batch processing plant with automated temperature and pressure controls for consistent product quality at scale.', icon: '🏭' },
-              { title: 'R&D Laboratory',       desc: 'In-house analytical lab equipped with HPLC, GC, and spectroscopy instruments for continuous product development and batch testing.', icon: '🔬' },
-              { title: 'Quality Assurance',    desc: 'ISO 9001:2015 certified QA protocols with full traceability — from raw material intake to finished goods dispatch.', icon: '✓' },
-              { title: 'Storage & Warehousing',desc: 'Temperature-controlled storage with 5,000+ MT capacity, segregated by product class and compliant with hazardous material standards.', icon: '📦' },
-              { title: 'Effluent Treatment',   desc: 'Zero liquid discharge (ZLD) effluent treatment plant ensuring full environmental compliance with GPCB norms.', icon: '♻️' },
-              { title: 'Logistics & Export',   desc: 'Dedicated loading bays with containerised export packing, supporting shipments to 14+ countries across 5 continents.', icon: '🚢' },
+              { title: 'Production Units',  desc: 'Advanced manufacturing facilities with modern machinery and quality control systems', icon: '🏭' },
+              { title: 'R&D Laboratory',    desc: 'Equipped with cutting-edge analytical instruments for product development and testing', icon: '🔬' },
+              { title: 'Quality Assurance', desc: 'ISO certified testing and quality management protocols', icon: '✓' },
             ].map((f, idx) => (
-              <div key={idx} className="bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                <div className="text-4xl mb-4">{f.icon}</div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{f.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
+              <div key={idx} className="bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-xl shadow-lg">
+                <div className="text-5xl mb-4">{f.icon}</div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-3">{f.title}</h3>
+                <p className="text-gray-700">{f.desc}</p>
               </div>
             ))}
           </div>
-          <div className="bg-slate-900 text-white rounded-2xl p-12 mb-12">
-            <h3 className="text-3xl font-black mb-10 text-center">Capacity & Capabilities</h3>
-            <div className="grid md:grid-cols-4 gap-8">
+          <div className="bg-slate-900 text-white rounded-2xl p-12">
+            <h3 className="text-3xl font-black mb-8 text-center">Capacity & Capabilities</h3>
+            <div className="grid md:grid-cols-2 gap-8">
               {[
-                { label: 'Annual Production',      value: '50,000+', unit: 'MT' },
-                { label: 'Storage Capacity',       value: '5,000+',  unit: 'MT' },
-                { label: 'Export Countries',       value: '14+',     unit: 'Nations' },
-                { label: 'Years of Operation',     value: '30+',     unit: 'Years' },
+                { label: 'Annual Production',      value: '50,000+ MT' },
+                { label: 'Storage Capacity',       value: '5,000+ MT' },
+                { label: 'Quality Certifications', value: 'ISO 9001, ISO 14001' },
+                { label: 'Packaging Options',      value: 'Bulk to Retail' },
               ].map((item, idx) => (
-                <div key={idx} className="text-center border-t-4 border-cyan-400 pt-6">
-                  <p className="text-4xl font-black text-cyan-400">{item.value}</p>
-                  <p className="text-sm font-semibold text-cyan-300 mb-1">{item.unit}</p>
-                  <p className="text-gray-400 text-xs uppercase tracking-widest">{item.label}</p>
+                <div key={idx} className="border-l-4 border-cyan-400 pl-6">
+                  <p className="text-gray-300 mb-2">{item.label}</p>
+                  <p className="text-3xl font-black text-cyan-400">{item.value}</p>
                 </div>
               ))}
-            </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-8">
-              <h3 className="text-xl font-black text-slate-900 mb-4">Certifications & Compliance</h3>
-              <ul className="space-y-3">
-                {['ISO 9001:2015 — Quality Management System', 'ISO 14001:2015 — Environmental Management', 'GPCB Compliant — Gujarat Pollution Control Board', 'REACH Compliant — European Chemical Standards', 'Zero Liquid Discharge (ZLD) Certified'].map((c, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
-                    <span className="text-teal-500 font-black mt-0.5">✓</span>{c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8">
-              <h3 className="text-xl font-black text-slate-900 mb-4">Packaging Options</h3>
-              <ul className="space-y-3">
-                {['25 kg & 50 kg HDPE bags', '200 kg MS / HDPE drums', 'Flexi bags (500 kg – 1 MT)', 'ISO tank containers (bulk)', 'Custom packaging on request'].map((p, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
-                    <span className="text-blue-500 font-black mt-0.5">→</span>{p}
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         </div>
@@ -828,7 +779,7 @@ export default function VidhiHexachemWebsite() {
                 <Mail className="text-blue-600 mt-1 flex-shrink-0" size={24} />
                 <div>
                   <h3 className="font-bold text-slate-900 mb-2">Email</h3>
-                  <p className="text-gray-700">info@vidhihexachem.in</p>
+                  <p className="text-gray-700">info@vidhihexachem.com</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -841,7 +792,7 @@ export default function VidhiHexachemWebsite() {
               <div className="mt-10 pt-10 border-t-2 border-gray-200">
                 <h3 className="text-xl font-bold text-slate-900 mb-4">Follow Us</h3>
                 <div className="flex gap-4">
-                  {[Linkedin].map((Icon, idx) => (
+                  {[Facebook, Twitter, Linkedin, Instagram].map((Icon, idx) => (
                     <button key={idx} className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors">
                       <Icon size={20} />
                     </button>
@@ -851,41 +802,31 @@ export default function VidhiHexachemWebsite() {
             </div>
             <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl">
               <h2 className="text-3xl font-bold text-slate-900 mb-8">Send us a Message</h2>
-              <form className="space-y-6" onSubmit={async (e) => {
-                e.preventDefault()
-                const d = new FormData(e.currentTarget)
-                const btn = (e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement)
-                btn.disabled = true; btn.textContent = 'Sending…'
-                await fetch('/api/send-inquiry', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ type: 'contact', name: d.get('name'), email: d.get('email'), product: d.get('product'), message: d.get('message') }),
-                })
-                btn.textContent = 'Message Sent ✓'
-              }}>
-                <div>
-                  <label className="block text-slate-900 font-semibold mb-2">Full Name</label>
-                  <input name="name" type="text" required className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600" placeholder="Your name" />
-                </div>
-                <div>
-                  <label className="block text-slate-900 font-semibold mb-2">Email</label>
-                  <input name="email" type="email" required className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600" placeholder="your@email.com" />
-                </div>
+              <div className="space-y-6">
+                {[
+                  { label: 'Full Name', type: 'text',  placeholder: 'Your name' },
+                  { label: 'Email',     type: 'email', placeholder: 'your@email.com' },
+                ].map((f, i) => (
+                  <div key={i}>
+                    <label className="block text-slate-900 font-semibold mb-2">{f.label}</label>
+                    <input type={f.type} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600" placeholder={f.placeholder} />
+                  </div>
+                ))}
                 <div>
                   <label className="block text-slate-900 font-semibold mb-2">Product Interest</label>
-                  <select name="product" className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
-                    <option value="">Select a product</option>
+                  <select className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
+                    <option>Select a product</option>
                     {products.map(p => <option key={p.sr}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-slate-900 font-semibold mb-2">Message</label>
-                  <textarea name="message" className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600" rows={4} placeholder="Your message"></textarea>
+                  <textarea className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600" rows={4} placeholder="Your message"></textarea>
                 </div>
-                <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 rounded-lg transition-all duration-300 disabled:opacity-60">
+                <button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 rounded-lg transition-all duration-300">
                   Send Message
                 </button>
-              </form>
+              </div>
             </div>
           </div>
         </div>
@@ -909,24 +850,24 @@ export default function VidhiHexachemWebsite() {
             <h3 className="text-white font-bold mb-4">Products</h3>
             <ul className="space-y-2">
               {['Chemical Intermediates', 'Aminophenols', 'Sulphonic Acids', 'Aromatic Amines'].map(p => (
-                <li key={p}><button onClick={() => setCurrentPage('products')} className="hover:text-cyan-400 transition-colors text-left">{p}</button></li>
+                <li key={p}><a href="#" className="hover:text-cyan-400 transition-colors">{p}</a></li>
               ))}
             </ul>
           </div>
           <div>
             <h3 className="text-white font-bold mb-4">Company</h3>
             <ul className="space-y-2">
-              <li><button onClick={() => setCurrentPage('about')} className="hover:text-cyan-400 transition-colors">About Us</button></li>
-              <li><button onClick={() => setCurrentPage('infrastructure')} className="hover:text-cyan-400 transition-colors">Infrastructure</button></li>
-              <li><button onClick={() => setCurrentPage('contact')} className="hover:text-cyan-400 transition-colors">Contact</button></li>
+              {['About Us', 'Infrastructure', 'Careers', 'Blog'].map(c => (
+                <li key={c}><a href="#" className="hover:text-cyan-400 transition-colors">{c}</a></li>
+              ))}
             </ul>
           </div>
           <div>
             <h3 className="text-white font-bold mb-4">Connect</h3>
             <ul className="space-y-2">
-              <li><a href="mailto:info@vidhihexachem.in" className="hover:text-cyan-400 transition-colors">info@vidhihexachem.in</a></li>
-              <li><a href="tel:+917940084484" className="hover:text-cyan-400 transition-colors">+91 79 4008 4484</a></li>
-              <li>Anand, Gujarat, India</li>
+              <li className="hover:text-cyan-400 cursor-pointer">info@vidhihexachem.com</li>
+              <li className="hover:text-cyan-400 cursor-pointer">+91 79 4008 4484</li>
+              <li className="hover:text-cyan-400 cursor-pointer">Anand, Gujarat, India</li>
             </ul>
           </div>
         </div>
