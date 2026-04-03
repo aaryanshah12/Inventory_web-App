@@ -3,7 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
-  title: 'Vidhi Hexa Chem - Inventory Portal',
+  title: 'Vidhi Hexa Chem',
   description: 'Chemical Factory Stock Management System',
 }
 
