@@ -9,12 +9,12 @@ export default function HomePage() {
 
   useEffect(() => {
     if (loading) return                          // still loading — wait
-    if (!user)   { router.replace('/login'); return } // not logged in
+    if (!user)   { router.replace('/inventory/login'); return } // not logged in
     if (!profile) return                         // logged in but profile not ready yet — wait
     // Profile ready — redirect to role dashboard
-    if (profile.role === 'owner')   router.replace('/owner')
-    if (profile.role === 'inputer') router.replace('/inputer')
-    if (profile.role === 'chemist') router.replace('/chemist')
+    if (profile.role === 'owner')   router.replace('/inventory/owner')
+    if (profile.role === 'inputer') router.replace('/inventory/inputer')
+    if (profile.role === 'chemist') router.replace('/inventory/chemist')
   }, [profile, loading, user, router])
 
   return (

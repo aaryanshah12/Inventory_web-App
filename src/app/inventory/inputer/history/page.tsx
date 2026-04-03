@@ -28,7 +28,7 @@ export default function InputerHistoryPage() {
           title="My Stock Entries"
           subtitle="Inputer · Entry History"
           accent="inputer"
-          actions={<Link href="/inputer/new" className="btn btn-inputer gap-2"><Plus size={15}/> New Entry</Link>}
+          actions={<Link href="/inventory/inputer/new" className="btn btn-inputer gap-2"><Plus size={15}/> New Entry</Link>}
         />
         <div className="card overflow-hidden">
           {loading ? (
@@ -65,7 +65,7 @@ export default function InputerHistoryPage() {
                   ))}
                   {entries.length === 0 && (
                     <tr><td colSpan={7} className="text-center text-muted py-12">
-                      No entries yet. <Link href="/inputer/new" className="text-inputer">Create one →</Link>
+                      No entries yet. <Link href="/inventory/inputer/new" className="text-inputer">Create one →</Link>
                     </td></tr>
                   )}
                 </tbody>
@@ -76,7 +76,7 @@ export default function InputerHistoryPage() {
               <div className="md:hidden space-y-3 p-4">
                 {entries.length === 0 && (
                   <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
-                    No entries yet. <Link href="/inputer/new" className="text-inputer">Create one →</Link>
+                    No entries yet. <Link href="/inventory/inputer/new" className="text-inputer">Create one →</Link>
                   </div>
                 )}
                 {entries.map(e => (

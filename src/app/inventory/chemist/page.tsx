@@ -76,7 +76,7 @@ export default function ChemistDashboard() {
           title={`Hello, ${profile?.full_name?.split(' ')[0]}`}
           subtitle="Chemist · Stock Usage Dashboard"
           accent="chemist"
-          actions={<Link href="/chemist/use" className="btn btn-chemist gap-2"><FlaskConical size={16}/> Log Usage</Link>}
+          actions={<Link href="/inventory/chemist/use" className="btn btn-chemist gap-2"><FlaskConical size={16}/> Log Usage</Link>}
         />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
@@ -185,7 +185,7 @@ export default function ChemistDashboard() {
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="font-mono text-xs text-muted uppercase tracking-widest">My Recent Usage</div>
-              <Link href="/chemist/history" className="text-xs text-chemist hover:underline font-mono">View All →</Link>
+              <Link href="/inventory/chemist/history" className="text-xs text-chemist hover:underline font-mono">View All →</Link>
             </div>
             <div className="overflow-x-auto hidden md:block">
               <table className="data-table">
@@ -207,7 +207,7 @@ export default function ChemistDashboard() {
                   ))}
                   {recentUsage.length === 0 && (
                     <tr><td colSpan={4} className="text-center text-muted py-8">
-                      No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                      No usage logged yet. <Link href="/inventory/chemist/use" className="text-chemist">Log now →</Link>
                     </td></tr>
                   )}
                 </tbody>
@@ -216,7 +216,7 @@ export default function ChemistDashboard() {
             <div className="md:hidden data-card-list p-4">
               {recentUsage.length === 0 && (
                 <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
-                  No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                  No usage logged yet. <Link href="/inventory/chemist/use" className="text-chemist">Log now →</Link>
                 </div>
               )}
               {recentUsage.map(u => (

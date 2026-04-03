@@ -57,7 +57,7 @@ export default function ChemistHistoryPage() {
           title="My Usage History"
           subtitle="Chemist · Consumption Log"
           accent="chemist"
-          actions={<Link href="/chemist/use" className="btn btn-chemist gap-2"><Plus size={15}/> Log Usage</Link>}
+          actions={<Link href="/inventory/chemist/use" className="btn btn-chemist gap-2"><Plus size={15}/> Log Usage</Link>}
         />
         <div className="card overflow-hidden">
           {loading ? (
@@ -102,7 +102,7 @@ export default function ChemistHistoryPage() {
                   ))}
                   {entries.length === 0 && (
                     <tr><td colSpan={6} className="text-center text-muted py-12">
-                      No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                      No usage logged yet. <Link href="/inventory/chemist/use" className="text-chemist">Log now →</Link>
                     </td></tr>
                   )}
                 </tbody>
@@ -113,7 +113,7 @@ export default function ChemistHistoryPage() {
               <div className="md:hidden data-card-list p-4">
                 {entries.length === 0 && (
                   <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
-                    No usage logged yet. <Link href="/chemist/use" className="text-chemist">Log now →</Link>
+                    No usage logged yet. <Link href="/inventory/chemist/use" className="text-chemist">Log now →</Link>
                   </div>
                 )}
                 {entries.map(e => (

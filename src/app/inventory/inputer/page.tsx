@@ -66,7 +66,7 @@ export default function InputerDashboard() {
           title={`Welcome, ${profile?.full_name?.split(' ')[0]}`}
           subtitle="Inputer · Stock Entry Dashboard"
           accent="inputer"
-          actions={<Link href="/inputer/new" className="btn btn-inputer gap-2"><Package size={16}/> New Entry</Link>}
+          actions={<Link href="/inventory/inputer/new" className="btn btn-inputer gap-2"><Package size={16}/> New Entry</Link>}
         />
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
@@ -84,7 +84,7 @@ export default function InputerDashboard() {
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <div className="font-mono text-xs text-muted uppercase tracking-widest">Recent Stock Entries</div>
-            <Link href="/inputer/history" className="text-xs text-inputer hover:underline font-mono">View All →</Link>
+            <Link href="/inventory/inputer/history" className="text-xs text-inputer hover:underline font-mono">View All →</Link>
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -117,7 +117,7 @@ export default function InputerDashboard() {
                     ))}
                     {recentEntries.length === 0 && (
                       <tr><td colSpan={6} className="text-center text-muted py-10">
-                        No entries yet. <Link href="/inputer/new" className="text-inputer">Create your first →</Link>
+                        No entries yet. <Link href="/inventory/inputer/new" className="text-inputer">Create your first →</Link>
                       </td></tr>
                     )}
                   </tbody>
@@ -127,7 +127,7 @@ export default function InputerDashboard() {
               <div className="md:hidden data-card-list p-4">
                 {recentEntries.length === 0 && (
                   <div className="text-center text-muted py-6 border border-dashed border-[color-mix(in srgb, var(--color-border) 80%, transparent)] rounded-lg">
-                    No entries yet. <Link href="/inputer/new" className="text-inputer">Create your first →</Link>
+                    No entries yet. <Link href="/inventory/inputer/new" className="text-inputer">Create your first →</Link>
                   </div>
                 )}
                 {recentEntries.map(e => (

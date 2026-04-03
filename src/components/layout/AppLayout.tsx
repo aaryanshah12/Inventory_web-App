@@ -14,29 +14,29 @@ interface NavItem { href: string; label: string; icon: React.ReactNode }
 
 const navByRole: Record<Role, NavItem[]> = {
   owner: [
-    { href: '/owner',             label: 'Dashboard',    icon: <LayoutDashboard size={18}/> },
-    { href: '/owner/stock',       label: 'Stock Ledger', icon: <Package size={18}/> },
-    { href: '/owner/usage',       label: 'Usage Log',    icon: <FlaskConical size={18}/> },
-    { href: '/owner/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
-    { href: '/owner/inout-products', label: 'In/Out Products', icon: <Package size={18}/> },
-    { href: '/owner/inward',      label: 'Inward',       icon: <ArrowDownToLine size={18}/> },
-    { href: '/owner/outward',     label: 'Outward',      icon: <ArrowUpToLine size={18}/> },
-    { href: '/owner/sales',       label: 'Sales',        icon: <TrendingUp size={18}/> },
-    { href: '/owner/reports',     label: 'Reports',    icon: <BarChart3 size={18}/> },
-    { href: '/owner/management', label: 'Management', icon: <Settings size={18}/> },
+    { href: '/inventory/owner',             label: 'Dashboard',    icon: <LayoutDashboard size={18}/> },
+    { href: '/inventory/owner/stock',       label: 'Stock Ledger', icon: <Package size={18}/> },
+    { href: '/inventory/owner/usage',       label: 'Usage Log',    icon: <FlaskConical size={18}/> },
+    { href: '/inventory/owner/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
+    { href: '/inventory/owner/inout-products', label: 'In/Out Products', icon: <Package size={18}/> },
+    { href: '/inventory/owner/inward',      label: 'Inward',       icon: <ArrowDownToLine size={18}/> },
+    { href: '/inventory/owner/outward',     label: 'Outward',      icon: <ArrowUpToLine size={18}/> },
+    { href: '/inventory/owner/sales',       label: 'Sales',        icon: <TrendingUp size={18}/> },
+    { href: '/inventory/owner/reports',     label: 'Reports',    icon: <BarChart3 size={18}/> },
+    { href: '/inventory/owner/management', label: 'Management', icon: <Settings size={18}/> },
   ],
   inputer: [
-    { href: '/inputer',         label: 'Dashboard',  icon: <LayoutDashboard size={18}/> },
-    { href: '/inputer/new',     label: 'New Entry',  icon: <Package size={18}/> },
-    { href: '/inputer/history', label: 'My Entries', icon: <BarChart3 size={18}/> },
+    { href: '/inventory/inputer',         label: 'Dashboard',  icon: <LayoutDashboard size={18}/> },
+    { href: '/inventory/inputer/new',     label: 'New Entry',  icon: <Package size={18}/> },
+    { href: '/inventory/inputer/history', label: 'My Entries', icon: <BarChart3 size={18}/> },
   ],
   chemist: [
-    { href: '/chemist',         label: 'Dashboard', icon: <LayoutDashboard size={18}/> },
-    { href: '/chemist/use',     label: 'Log Usage', icon: <FlaskConical size={18}/> },
-    { href: '/chemist/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
-    { href: '/chemist/inward',  label: 'Inward',    icon: <ArrowDownToLine size={18}/> },
-    { href: '/chemist/outward', label: 'Outward',   icon: <ArrowUpToLine size={18}/> },
-    { href: '/chemist/history', label: 'My Usage',  icon: <BarChart3 size={18}/> },
+    { href: '/inventory/chemist',         label: 'Dashboard', icon: <LayoutDashboard size={18}/> },
+    { href: '/inventory/chemist/use',     label: 'Log Usage', icon: <FlaskConical size={18}/> },
+    { href: '/inventory/chemist/monthly-entry', label: 'Monthly Material', icon: <CalendarRange size={18}/> },
+    { href: '/inventory/chemist/inward',  label: 'Inward',    icon: <ArrowDownToLine size={18}/> },
+    { href: '/inventory/chemist/outward', label: 'Outward',   icon: <ArrowUpToLine size={18}/> },
+    { href: '/inventory/chemist/history', label: 'My Usage',  icon: <BarChart3 size={18}/> },
   ],
 }
 
@@ -75,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   async function handleSignOut() {
     await signOut()
-    router.replace('/login')
+    router.replace('/inventory/login')
   }
 
   function navigate(href: string) {

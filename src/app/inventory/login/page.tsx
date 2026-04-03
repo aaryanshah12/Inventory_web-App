@@ -14,9 +14,9 @@ export default function LoginPage() {
   // Once profile loads after sign in, redirect based on role
   useEffect(() => {
     if (!loading && profile) {
-      if (profile.role === 'owner')   router.replace('/owner')
-      if (profile.role === 'inputer') router.replace('/inputer')
-      if (profile.role === 'chemist') router.replace('/chemist')
+      if (profile.role === 'owner')   router.replace('/inventory/owner')
+      if (profile.role === 'inputer') router.replace('/inventory/inputer')
+      if (profile.role === 'chemist') router.replace('/inventory/chemist')
     }
   }, [profile, loading, router])
 

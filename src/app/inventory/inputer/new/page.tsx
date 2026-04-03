@@ -65,7 +65,7 @@ export default function NewStockEntryPage() {
       return;
     }
     setSuccess(true);
-    setTimeout(() => router.push("/inputer/history"), 1500);
+    setTimeout(() => router.push("/inventory/inputer/history"), 1500);
   }
 
   function update(k: string, v: string) {

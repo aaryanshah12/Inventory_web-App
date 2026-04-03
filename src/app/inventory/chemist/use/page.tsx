@@ -192,7 +192,7 @@ export default function ChemistUsagePage() {
 
     if (result.error) { setError(result.error); setLoading(false); return }
     setSuccess(true)
-    setTimeout(() => router.push('/chemist'), 1500)
+    setTimeout(() => router.push('/inventory/chemist'), 1500)
   }
 
   function update(k: string, v: string) { setForm(f => ({ ...f, [k]: v })) }
