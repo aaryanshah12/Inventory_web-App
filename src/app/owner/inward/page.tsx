@@ -31,10 +31,6 @@ export default function OwnerInwardPage() {
     tons: 0,
   })
 
-  const selectedFactory = useMemo(
-    () => factories.find((f: any) => f.id === form.factory_id) ?? factories[0],
-    [factories, form.factory_id],
-  )
 
   const productOptions = useMemo(
     () => products.filter(p => p.factory_id === form.factory_id && p.kind === 'inward' && p.is_active),
@@ -182,7 +178,7 @@ export default function OwnerInwardPage() {
         <div className="card overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-border flex items-center justify-between">
             <div className="font-mono text-xs text-muted uppercase tracking-widest">Entries</div>
-            {loading && <div className="text-xs text-muted">Loading…</div>}
+            {loading && <div className="w-4 h-4 border-2 border-owner border-t-transparent rounded-full animate-spin" />}
           </div>
 
           <div className="hidden md:block overflow-x-auto">
@@ -197,21 +193,31 @@ export default function OwnerInwardPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map(e => (
-                  <tr key={e.id}>
-                    <td className="font-mono text-xs text-muted">{e.entry_date ? new Date(e.entry_date).toLocaleDateString('en-IN') : '—'}</td>
-                    <td className="text-primary text-xs">{factories.find((f: any) => f.id === e.factory_id)?.name ?? '—'}</td>
-                    <td className="text-primary">{e.product_name ?? '—'}</td>
-                    <td className="font-mono text-owner">{Number(e.tons ?? 0).toFixed(3)}</td>
-                    <td className="text-right">
-                      <button className="text-xs text-red-400 hover:underline inline-flex items-center gap-1" onClick={() => handleDelete(e.id)}>
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {entries.length === 0 && (
-                  <tr><td colSpan={5} className="text-center text-muted py-8">No entries yet</td></tr>
+                {loading ? (
+                  <tr><td colSpan={5} className="py-12">
+                    <div className="flex justify-center">
+                      <div className="w-6 h-6 border-2 border-owner border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  </td></tr>
+                ) : (
+                  <>
+                    {entries.map(e => (
+                      <tr key={e.id}>
+                        <td className="font-mono text-xs text-muted">{e.entry_date ? new Date(e.entry_date).toLocaleDateString('en-IN') : '—'}</td>
+                        <td className="text-primary text-xs">{factories.find((f: any) => f.id === e.factory_id)?.name ?? '—'}</td>
+                        <td className="text-primary">{e.product_name ?? '—'}</td>
+                        <td className="font-mono text-owner">{Number(e.tons ?? 0).toFixed(3)}</td>
+                        <td className="text-right">
+                          <button className="text-xs text-red-400 hover:underline inline-flex items-center gap-1" onClick={() => handleDelete(e.id)}>
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {entries.length === 0 && (
+                      <tr><td colSpan={5} className="text-center text-muted py-8">No entries yet</td></tr>
+                    )}
+                  </>
                 )}
               </tbody>
               {entries.length > 0 && (
@@ -227,31 +233,37 @@ export default function OwnerInwardPage() {
           </div>
 
           <div className="md:hidden p-4">
-            <div className="data-card-list">
-              {entries.map(e => (
-                <div key={e.id} className="data-card">
-                  <div className="data-card-header">
-                    <span className="data-card-title">{e.product_name ?? '—'}</span>
-                    <span className="data-card-meta">{e.entry_date ? new Date(e.entry_date).toLocaleDateString('en-IN') : '—'}</span>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-owner border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="data-card-list">
+                {entries.map(e => (
+                  <div key={e.id} className="data-card">
+                    <div className="data-card-header">
+                      <span className="data-card-title">{e.product_name ?? '—'}</span>
+                      <span className="data-card-meta">{e.entry_date ? new Date(e.entry_date).toLocaleDateString('en-IN') : '—'}</span>
+                    </div>
+                    <div className="data-card-grid">
+                      <span className="data-card-label">Factory</span>
+                      <span className="data-card-value">{factories.find((f: any) => f.id === e.factory_id)?.name ?? '—'}</span>
+                      <span className="data-card-label">TONS (in Kg)</span>
+                      <span className="font-mono text-owner text-right">{Number(e.tons ?? 0).toFixed(3)}</span>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button className="text-xs text-red-400 inline-flex items-center gap-1" onClick={() => handleDelete(e.id)}>
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="data-card-grid">
-                    <span className="data-card-label">Factory</span>
-                    <span className="data-card-value">{factories.find((f: any) => f.id === e.factory_id)?.name ?? '—'}</span>
-                    <span className="data-card-label">TONS (in Kg)</span>
-                    <span className="font-mono text-owner text-right">{Number(e.tons ?? 0).toFixed(3)}</span>
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button className="text-xs text-red-400 inline-flex items-center gap-1" onClick={() => handleDelete(e.id)}>
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {entries.length === 0 && (
-                <div className="text-center text-muted py-8">No entries yet</div>
-              )}
-            </div>
-            {entries.length > 0 && (
+                ))}
+                {entries.length === 0 && (
+                  <div className="text-center text-muted py-8">No entries yet</div>
+                )}
+              </div>
+            )}
+            {!loading && entries.length > 0 && (
               <div className="data-card mt-3">
                 <div className="data-card-header">
                   <span className="data-card-title">Total</span>
