@@ -1084,7 +1084,7 @@ export default function VidhiHexachemWebsite() {
   const ContactPage = () => (
     <div>
       <div className="relative h-56 md:h-72 overflow-hidden">
-        <img src="/contact-banner.webp" alt="Contact Us" className="w-full h-full object-cover object-center" />
+        <img src="/contact-banner.webp" alt="Contact Us" className="w-full h-full object-cover" style={{ objectPosition: 'center 20%', transform: 'scale(1.15)', transformOrigin: 'center top' }} />
         <div className="absolute inset-0 bg-black/40 flex items-center">
           <div className="max-w-6xl mx-auto px-4 w-full">
             <h1 className="text-5xl font-black text-white mb-2">Get In Touch</h1>
