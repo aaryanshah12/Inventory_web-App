@@ -425,6 +425,35 @@ export default function VidhiHexachemWebsite() {
     </nav>
   )
 
+  const owners = [
+    {
+      name: 'Nisarg Trivedi',
+      role: 'Director',
+      contact: '+91 63546 65395',
+      image: '/nisarg.jpeg',
+      cardImage: '/nisarg-profile.png',
+      photoPosition: 'center 42%',
+      imageTransform: 'none',
+      cardPhotoPosition: 'center center',
+      cardMessage: '"Quality is not an act — it is a habit. At Vidhi Hexachem, we commit to delivering nothing less than excellence to every client, every time."',
+      message: '"Vidhi Hexachem was born from a simple belief: that scientific excellence and modern manufacturing practices can transform the chemical intermediates market. As a young leader, I\'m determined to set new standards and deliver on every promise — because our reputation depends on it."',
+      tag: 'Vision & Growth',
+    },
+    {
+      name: 'Vishnu Patel',
+      role: 'Director',
+      contact: '+91 97268 64012',
+      image: '/vishnu.jpg',
+      cardImage: '/vishnu.jpg',
+      photoPosition: 'center top',
+      imageTransform: 'none',
+      cardPhotoPosition: 'center top',
+      cardMessage: '"Our strength lies in trust. We build lasting partnerships by putting our clients\' success at the heart of everything we manufacture."',
+      message: '"Decades have taught me one lesson: lasting success is built on reliability and relationships. Vidhi Hexachem fuses experienced wisdom with forward-thinking innovation — delivering products clients can proudly stand behind."',
+      tag: 'Experience & Trust',
+    },
+  ]
+
   const CoreTeamSection = () => (
     <section className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -432,32 +461,22 @@ export default function VidhiHexachemWebsite() {
         <h3 className="text-4xl font-black text-center text-slate-900 mb-3">FOUNDING MEMBERS & PARTNERS</h3>
         <div className="w-16 h-1 bg-cyan-400 mx-auto mb-12 rounded-full"></div>
         <div className="grid md:grid-cols-2 gap-12 max-w-2xl mx-auto">
-          {[
-            {
-              name: 'Nisarg Trivedi', role: 'Director', contact: '+91 63546 65395',
-              message: '"Quality is not an act — it is a habit. At Vidhi Hexachem, we commit to delivering nothing less than excellence to every client, every time."'
-            },
-            {
-              name: 'Vishnu Patel', role: 'Director', contact: '+91 97268 64012',
-              message: '"Our strength lies in trust. We build lasting partnerships by putting our clients\' success at the heart of everything we manufacture."'
-            },
-          ].map((member, idx) => (
+          {owners.map((member, idx) => (
             <div key={idx} className="flip-card h-72">
               <div className="flip-card-inner">
                 {/* Front */}
                 <div className="flip-card-front bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl text-center border border-gray-200 shadow-lg flex flex-col items-center justify-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full mx-auto mb-5 flex items-center justify-center text-white font-black text-3xl shadow-lg">
-                    {member.name.split(' ').map(n => n[0]).join('')}
+                  <div className="w-24 h-24 rounded-full mx-auto mb-5 shadow-lg overflow-hidden border-4 border-cyan-400">
+                    <img src={member.cardImage} alt={member.name} className="w-full h-full object-cover" style={{ objectPosition: member.cardPhotoPosition }} />
                   </div>
                   <h3 className="text-2xl font-black text-slate-900 mb-2">{member.name}</h3>
                   <p className="text-blue-600 font-semibold mb-3">{member.role}</p>
                   <a href={`tel:${member.contact.replace(/\s/g, '')}`} className="text-sm text-gray-600 hover:text-blue-600 transition-colors">{member.contact}</a>
-                  <p className="text-xs text-gray-400 mt-4 italic"></p>
                 </div>
                 {/* Back */}
                 <div className="flip-card-back bg-gradient-to-br from-slate-900 to-blue-900 p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center">
                   <svg className="w-8 h-8 text-cyan-400 mb-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                  <p className="text-white text-lg font-bold leading-relaxed italic mb-6">{member.message}</p>
+                  <p className="text-white text-lg font-bold leading-relaxed italic mb-6">{member.cardMessage}</p>
                   <p className="text-cyan-400 font-black text-sm tracking-widest uppercase">— {member.name}</p>
                 </div>
               </div>
@@ -467,6 +486,69 @@ export default function VidhiHexachemWebsite() {
       </div>
     </section>
   )
+
+  const OwnerSpotlight = () => {
+    const [active, setActive] = useState(0)
+    const [fading, setFading] = useState(false)
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setFading(true)
+        setTimeout(() => {
+          setActive(a => (a + 1) % owners.length)
+          setFading(false)
+        }, 400)
+      }, 10000)
+      return () => clearInterval(timer)
+    }, [])
+    const owner = owners[active]
+    return (
+      <section className="py-20 bg-slate-900 text-white overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-cyan-400 text-center mb-2">Leadership</h2>
+          <h3 className="text-4xl font-black text-center mb-3">A Word From Our Directors</h3>
+          <div className="w-16 h-1 bg-cyan-400 mx-auto mb-14 rounded-full"></div>
+          <div
+            className="grid md:grid-cols-2 gap-12 items-center transition-opacity duration-400"
+            style={{ opacity: fading ? 0 : 1 }}
+          >
+            {/* Full image */}
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl h-[520px]">
+              <img src={owner.image} alt={owner.name} className="w-full h-full object-cover" style={{ objectPosition: owner.photoPosition }} />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+              <div className="absolute bottom-5 left-5">
+                <span className="bg-cyan-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">{owner.tag}</span>
+              </div>
+            </div>
+            {/* Message */}
+            <div className="flex flex-col justify-center">
+              <svg className="w-12 h-12 text-cyan-400 mb-6 opacity-60" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+              </svg>
+              <p className="text-xl md:text-2xl font-bold leading-relaxed text-white/90 italic mb-8">{owner.message}</p>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-cyan-400 flex-shrink-0">
+                  <img src={owner.cardImage} alt={owner.name} className="w-full h-full object-cover" style={{ objectPosition: owner.cardPhotoPosition }} />
+                </div>
+                <div>
+                  <p className="font-black text-lg text-white">{owner.name}</p>
+                  <p className="text-cyan-400 text-sm font-semibold">{owner.role}, Vidhi Hexachem LLP</p>
+                  <a href={`tel:${owner.contact.replace(/\s/g, '')}`} className="text-gray-400 text-sm hover:text-cyan-400 transition-colors">{owner.contact}</a>
+                </div>
+              </div>
+              {/* Dots */}
+              <div className="flex gap-2 mt-10">
+                {owners.map((_, i) => (
+                  <button key={i} onClick={() => { setFading(true); setTimeout(() => { setActive(i); setFading(false) }, 400) }}
+                    className={`h-2 rounded-full transition-all duration-300 ${i === active ? 'bg-cyan-400 w-8' : 'bg-white/30 w-2'}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   const SalesNetworkSection = () => (
     <section className="py-20 bg-slate-50">
@@ -480,9 +562,29 @@ export default function VidhiHexachemWebsite() {
     </section>
   )
 
-  const HomePage = () => (
-    <div>
-      <div className="relative h-96 md:h-screen bg-cover bg-center" style={{ backgroundImage: 'url("/home-banner.jpg")' }}>
+  const factoryImages = [
+    '/factory-01.jpeg',  // dramatic boiler room — dark industrial
+    '/factory-02.jpeg',  // tall cyclone separator — impressive scale
+    '/factory-07.jpeg',  // blue reactor vessel — matches website blue
+    '/factory-13.jpeg',  // blue cylindrical storage tank — clean
+    '/factory-28.jpeg',  // exterior building / facility overview
+  ]
+
+  const HomeBanner = () => {
+    const [current, setCurrent] = useState(0)
+    useEffect(() => {
+      const timer = setInterval(() => setCurrent(c => (c + 1) % factoryImages.length), 5000)
+      return () => clearInterval(timer)
+    }, [])
+    return (
+      <div className="relative h-[600px] md:h-screen overflow-hidden">
+        {factoryImages.map((src, idx) => (
+          <div
+            key={idx}
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+            style={{ backgroundImage: `url("${src}")`, opacity: idx === current ? 1 : 0 }}
+          />
+        ))}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
         <div className="relative h-full flex items-center justify-center">
           <div className="text-center text-white z-10 px-4">
@@ -490,7 +592,7 @@ export default function VidhiHexachemWebsite() {
               THE CHEMISTRY OF <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">EXCELLENCE</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Vidhi Hexachem LLP delivers premium chemical intermediates for dye, pigment, and pharmaceutical industries worldwide.
+              Vidhi Hexa Chem delivers premium chemical intermediates for dye, pigment, and pharmaceutical industries worldwide.
             </p>
             <button onClick={() => setCurrentPage('products')}
               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105">
@@ -498,7 +600,21 @@ export default function VidhiHexachemWebsite() {
             </button>
           </div>
         </div>
+        {/* Dots indicator */}
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5 z-10">
+          {factoryImages.map((_, idx) => (
+            <button key={idx} onClick={() => setCurrent(idx)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === current ? 'bg-cyan-400 w-4' : 'bg-white/40'}`}
+            />
+          ))}
+        </div>
       </div>
+    )
+  }
+
+  const HomePage = () => (
+    <div>
+      <HomeBanner />
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -782,6 +898,8 @@ export default function VidhiHexachemWebsite() {
         </div>
       </section>
 
+      <OwnerSpotlight />
+
       {/* Why Choose Us */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
@@ -831,8 +949,6 @@ export default function VidhiHexachemWebsite() {
           </div>
         </div>
       </section>
-
-      <CoreTeamSection />
     </div>
   )
 
@@ -920,15 +1036,56 @@ export default function VidhiHexachemWebsite() {
     </div>
   )
 
-  const InfrastructurePage = () => (
-    <div>
-      <div className="relative text-white py-20 bg-cover bg-center" style={{ backgroundImage: 'url("/infrastructure-banner.jpg")' }}>
-        <div className="absolute inset-0 bg-black/60"></div>
-        <div className="relative max-w-6xl mx-auto px-4">
-          <h1 className="text-5xl font-black mb-4">Our Infrastructure</h1>
-          <p className="text-xl text-cyan-400">State-of-the-art facilities and capabilities</p>
+  const infraImages = [
+    '/factory-01.jpeg',  // boiler room with blue fans — wide landscape
+    '/factory-03.jpeg',  // row of grinding mills — wide horizontal
+    '/factory-08.jpeg',  // multiple reactor vessels — wide horizontal
+    '/factory-14.jpeg',  // round mixing vessel with scraper arm
+    '/factory-34.jpeg',  // blue cooling trough — strong horizontal
+  ]
+
+  const InfraBanner = () => {
+    const [current, setCurrent] = useState(0)
+    useEffect(() => {
+      const timer = setInterval(() => setCurrent(c => (c + 1) % infraImages.length), 5000)
+      return () => clearInterval(timer)
+    }, [])
+    return (
+      <div className="relative text-white overflow-hidden" style={{ minHeight: 420 }}>
+        {infraImages.map((src, idx) => (
+          <div
+            key={idx}
+            className="absolute inset-0 transition-opacity duration-1000"
+            style={{
+              backgroundImage: `url("${src}")`,
+              backgroundSize: '120%',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center center',
+              opacity: idx === current ? 1 : 0,
+            }}
+          />
+        ))}
+        <div className="absolute inset-0 bg-black/55"></div>
+        <div className="relative h-full flex items-center max-w-6xl mx-auto px-4" style={{ minHeight: 420 }}>
+          <div>
+            <h1 className="text-5xl font-black mb-4">Our Infrastructure</h1>
+            <p className="text-xl text-cyan-400">State-of-the-art facilities and capabilities</p>
+          </div>
+        </div>
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
+          {infraImages.map((_, idx) => (
+            <button key={idx} onClick={() => setCurrent(idx)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === current ? 'bg-cyan-400 w-4' : 'bg-white/40'}`}
+            />
+          ))}
         </div>
       </div>
+    )
+  }
+
+  const InfrastructurePage = () => (
+    <div>
+      <InfraBanner />
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-4xl font-black text-slate-900 mb-4 text-center">Manufacturing Facilities</h2>
@@ -1045,8 +1202,8 @@ export default function VidhiHexachemWebsite() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <img src="/chemical-intermediate.jpeg" alt="Lab" className="rounded-2xl object-cover h-48 w-full shadow-md" />
-              <img src="/infrastructure-banner.jpg" alt="Facility" className="rounded-2xl object-cover h-48 w-full shadow-md" />
+              <img src="/factory-03.jpeg" alt="Vidhi Hexa Chem Lab" className="rounded-2xl object-cover h-48 w-full shadow-md" />
+              <img src="/factory-07.jpeg" alt="Vidhi Hexa Chem Facility" className="rounded-2xl object-cover h-48 w-full shadow-md" />
               <div className="col-span-2 bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-6 text-white text-center">
                 <p className="text-4xl font-black text-cyan-400 mb-1">99.2%</p>
                 <p className="text-sm text-white/70">Average on-spec batch release rate across all product lines</p>
@@ -1077,6 +1234,16 @@ export default function VidhiHexachemWebsite() {
               </div>
             ))}
           </div>
+          {/* Zero Discharge Evidence */}
+          <div className="mt-14 grid md:grid-cols-2 gap-6">
+            <div className="rounded-2xl overflow-hidden shadow-lg">
+              <img src="/zero-discharge-1.jpeg" alt="Vidhi Hexa Chem Zero Liquid Discharge Plant" className="w-full h-72 object-cover" />
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-lg">
+              <img src="/zero-discharge-2.jpeg" alt="Vidhi Hexa Chem ZLD Effluent Treatment Facility" className="w-full h-72 object-cover" />
+            </div>
+          </div>
+          <p className="text-center text-teal-300 text-sm mt-4 font-semibold">Our Zero Liquid Discharge (ZLD) effluent treatment plant — fully compliant with GPCB norms</p>
         </div>
       </section>
     </div>
