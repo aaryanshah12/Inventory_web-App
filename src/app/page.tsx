@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X, Mail, Phone, MapPin, Linkedin } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -358,6 +358,10 @@ export default function VidhiHexachemWebsite() {
   const [currentPage, setCurrentPage] = useState('home')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [inquiryProduct, setInquiryProduct] = useState<Product | null>(null)
+  const [productSearch, setProductSearch] = useState('')
+  const [zoomStructure, setZoomStructure] = useState<{ src: string; name: string } | null>(null)
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [currentPage])
 
   const products: Product[] = [
     { sr: 1,  name: 'OPASA',                     fullname: 'Ortho Amino Phenol-4-Sulfonic Acid',                 mw: '189',    cas: '98-37-3',     purity: '92%' },
@@ -428,16 +432,34 @@ export default function VidhiHexachemWebsite() {
         <div className="w-16 h-1 bg-cyan-400 mx-auto mb-12 rounded-full"></div>
         <div className="grid md:grid-cols-2 gap-12 max-w-2xl mx-auto">
           {[
-            { name: 'Nisarg Trivedi', role: 'Director & Operations Head', contact: '+91 63546 65395' },
-            { name: 'Vishnu Patel',   role: 'Director & Technical Head',   contact: '+91 98765 43211' },
+            {
+              name: 'Nisarg Trivedi', role: 'Director', contact: '+91 63546 65395',
+              message: '"Quality is not an act — it is a habit. At Vidhi Hexachem, we commit to delivering nothing less than excellence to every client, every time."'
+            },
+            {
+              name: 'Vishnu Patel', role: 'Director', contact: '+91 97268 64012',
+              message: '"Our strength lies in trust. We build lasting partnerships by putting our clients\' success at the heart of everything we manufacture."'
+            },
           ].map((member, idx) => (
-            <div key={idx} className="bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl text-center border border-gray-200 shadow-lg">
-              <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full mx-auto mb-6 flex items-center justify-center text-white font-black text-3xl shadow-lg">
-                {member.name.split(' ').map(n => n[0]).join('')}
+            <div key={idx} className="flip-card h-72">
+              <div className="flip-card-inner">
+                {/* Front */}
+                <div className="flip-card-front bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl text-center border border-gray-200 shadow-lg flex flex-col items-center justify-center">
+                  <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full mx-auto mb-5 flex items-center justify-center text-white font-black text-3xl shadow-lg">
+                    {member.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 mb-2">{member.name}</h3>
+                  <p className="text-blue-600 font-semibold mb-3">{member.role}</p>
+                  <a href={`tel:${member.contact.replace(/\s/g, '')}`} className="text-sm text-gray-600 hover:text-blue-600 transition-colors">{member.contact}</a>
+                  <p className="text-xs text-gray-400 mt-4 italic"></p>
+                </div>
+                {/* Back */}
+                <div className="flip-card-back bg-gradient-to-br from-slate-900 to-blue-900 p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center">
+                  <svg className="w-8 h-8 text-cyan-400 mb-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                  <p className="text-white text-lg font-bold leading-relaxed italic mb-6">{member.message}</p>
+                  <p className="text-cyan-400 font-black text-sm tracking-widest uppercase">— {member.name}</p>
+                </div>
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-2">{member.name}</h3>
-              <p className="text-blue-600 font-semibold mb-3">{member.role}</p>
-              <p className="text-sm text-gray-600">{member.contact}</p>
             </div>
           ))}
         </div>
@@ -463,12 +485,11 @@ export default function VidhiHexachemWebsite() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
         <div className="relative h-full flex items-center justify-center">
           <div className="text-center text-white z-10 px-4">
-            <h2 className="text-lg md:text-xl font-semibold text-cyan-400 mb-4">PREMIER CHEMICAL SOLUTIONS</h2>
             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
               THE CHEMISTRY OF <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">EXCELLENCE</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Vidhi Hexachem LLP delivers premium chemical intermediates for dye manufacturing industries worldwide.
+              Vidhi Hexachem LLP delivers premium chemical intermediates for dye, pigment, and pharmaceutical industries worldwide.
             </p>
             <button onClick={() => setCurrentPage('products')}
               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105">
@@ -483,7 +504,7 @@ export default function VidhiHexachemWebsite() {
             <div>
               <h2 className="text-4xl font-black text-slate-900 mb-6">WELCOME TO VIDHI HEXACHEM</h2>
               <p className="text-gray-700 text-lg leading-relaxed mb-4">
-                Vidhi Hexachem LLP is a globally renowned manufacturer and exporter of premium chemical intermediates for the dye and pigment industry.
+                Vidhi Hexachem LLP is a globally renowned manufacturer and exporter of premium chemical intermediates for the dye, pigment, and pharmaceutical industries.
               </p>
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 Our team is united by a vision of "Delivering Excellence Daily". We fulfill our duty of delivering products that meet the economic needs of the industry while maintaining the highest environmental standards.
@@ -631,16 +652,20 @@ export default function VidhiHexachemWebsite() {
           <p className="text-xl text-cyan-400">Building Excellence Since 1990</p>
         </div>
       </div>
+      {/* Our Story */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl font-black text-slate-900 mb-6">Our Story</h2>
               <p className="text-gray-700 mb-4 text-lg leading-relaxed">
-                Vidhi Hexachem LLP was established with a vision to become a leading chemical intermediate manufacturer globally. With 30+ years of industry experience, we have built a reputation for quality, innovation, and customer satisfaction.
+                Vidhi Hexachem LLP was founded with a singular vision — to become a world-class manufacturer of chemical intermediates that power the dye, pigment, pharmaceutical, and specialty chemical industries. With over 30 years of combined industry experience, our founding team built the company from the ground up, driven by a deep commitment to quality and scientific precision.
               </p>
               <p className="text-gray-700 mb-4 text-lg leading-relaxed">
-                Our journey spans from humble beginnings to becoming a trusted partner for hundreds of industrial clients across multiple continents.
+                From our state-of-the-art facility in Anand, Gujarat, we serve clients across India and international markets, supplying 17 carefully developed intermediates that meet strict purity and performance standards. Our journey from a regional supplier to a trusted global partner reflects our relentless pursuit of excellence.
+              </p>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                Every product we manufacture undergoes rigorous quality checks, and every client relationship we build is grounded in transparency, reliability, and long-term value.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4 h-96">
@@ -659,6 +684,153 @@ export default function VidhiHexachemWebsite() {
           </div>
         </div>
       </section>
+
+      {/* Mission & Vision */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-10">
+            <div className="bg-white rounded-2xl p-10 shadow-sm border border-gray-100">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center mb-6 shadow-md">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">Our Vision</h3>
+              <p className="text-gray-600 leading-relaxed text-lg">To be the most trusted and innovative chemical intermediate supplier in South Asia, enabling our clients across the dye, pigment, and pharmaceutical sectors to manufacture world-class products with confidence and consistency.</p>
+            </div>
+            <div className="bg-white rounded-2xl p-10 shadow-sm border border-gray-100">
+              <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center mb-6 shadow-md">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">Our Mission</h3>
+              <p className="text-gray-600 leading-relaxed text-lg">To manufacture high-purity chemical intermediates with uncompromising quality standards, fostering long-term partnerships built on reliability, scientific excellence, and customer-first values.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Core Values */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-gray-500 text-center mb-2">What Drives Us</h2>
+          <h3 className="text-4xl font-black text-center text-slate-900 mb-3">Our Core Values</h3>
+          <div className="w-16 h-1 bg-cyan-400 mx-auto mb-14 rounded-full"></div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Quality First', desc: 'Every batch undergoes rigorous purity and performance testing before it leaves our facility.', color: 'from-blue-500 to-blue-700' },
+              { icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', title: 'Innovation', desc: 'We continuously refine our processes and explore new formulations to stay ahead of industry demands.', color: 'from-cyan-500 to-teal-600' },
+              { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', title: 'Partnership', desc: 'We view every client relationship as a long-term partnership, not just a transaction.', color: 'from-indigo-500 to-blue-600' },
+              { icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064', title: 'Sustainability', desc: 'Responsible manufacturing practices that protect people, communities, and the environment.', color: 'from-green-500 to-teal-500' },
+            ].map((v, i) => (
+              <div key={i} className="text-center group">
+                <div className={`w-16 h-16 bg-gradient-to-br ${v.color} rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={v.icon}/></svg>
+                </div>
+                <h4 className="text-lg font-black text-slate-900 mb-3">{v.title}</h4>
+                <p className="text-gray-600 text-sm leading-relaxed">{v.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Manufacturing Capability */}
+      <section className="py-20 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-cyan-400 text-center mb-2">Built for Scale</h2>
+          <h3 className="text-4xl font-black text-center mb-3">Manufacturing Capabilities</h3>
+          <div className="w-16 h-1 bg-cyan-400 mx-auto mb-14 rounded-full"></div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { title: 'ISO-Grade Production', desc: 'Our plant operates under stringent quality management protocols, ensuring every intermediate meets international purity standards.' },
+              { title: 'In-House R&D', desc: 'A dedicated research team continually optimizes synthesis routes, improving yield and reducing process variability.' },
+              { title: 'Scalable Capacity', desc: 'With 50,000+ MT annual capacity and room to scale, we support clients from trial orders to full-volume production runs.' },
+            ].map((c, i) => (
+              <div key={i} className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+                <div className="w-10 h-1 bg-cyan-400 rounded-full mb-5"></div>
+                <h4 className="text-xl font-black mb-3">{c.title}</h4>
+                <p className="text-white/75 leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Industries We Serve */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-gray-500 text-center mb-2">Who We Serve</h2>
+          <h3 className="text-4xl font-black text-center text-slate-900 mb-3">Industries We Supply To</h3>
+          <div className="w-16 h-1 bg-cyan-400 mx-auto mb-14 rounded-full"></div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01', title: 'Dye Industry', desc: 'Core supplier of azo dye intermediates including OPASA, PAABSA, METANILIC ACID, and other sulphonic acid compounds used in reactive, acid, and direct dyes.', color: 'from-blue-600 to-blue-800' },
+              { icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z', title: 'Pigment Industry', desc: 'Supplying aminophenols, nitro compounds, and coupling components critical in the production of organic pigments for coatings, plastics, and printing inks.', color: 'from-cyan-500 to-teal-600' },
+              { icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z', title: 'Pharmaceutical', desc: 'Key sulphonic acid and amine intermediates used as building blocks in API synthesis, fine chemical manufacturing, and pharmaceutical formulation processes.', color: 'from-indigo-500 to-purple-600' },
+              { icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', title: 'Specialty Chemicals', desc: 'Serving textile auxiliaries, optical brightener producers, and agrochemical manufacturers who rely on our high-purity aromatic intermediates for complex synthesis.', color: 'from-teal-500 to-green-600' },
+            ].map((ind, i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-shadow duration-300">
+                <div className={`bg-gradient-to-br ${ind.color} p-6 flex items-center justify-center`}>
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={ind.icon}/></svg>
+                </div>
+                <div className="p-6">
+                  <h4 className="text-lg font-black text-slate-900 mb-3">{ind.title}</h4>
+                  <p className="text-gray-600 text-sm leading-relaxed">{ind.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-sm uppercase tracking-widest text-gray-500 mb-2">Our Differentiators</h2>
+              <h3 className="text-4xl font-black text-slate-900 mb-8">Why Clients Choose Vidhi Hexachem</h3>
+              <div className="space-y-6">
+                {[
+                  { title: 'Consistent Purity Guarantee', desc: 'Every batch is tested in our in-house lab before dispatch. We back our purity claims with full CoA documentation.' },
+                  { title: 'Flexible Order Quantities', desc: 'We accommodate both small trial orders and large bulk requirements, scaling seamlessly as your business grows.' },
+                  { title: 'Technical Support', desc: 'Our chemistry team provides application guidance and troubleshooting, ensuring our intermediates perform precisely in your process.' },
+                  { title: 'Reliable Lead Times', desc: 'With strong raw material procurement relationships and planned production cycles, we maintain on-time delivery rates above 95%.' },
+                  { title: 'Competitive Pricing', desc: 'Direct manufacturing with efficient processes allows us to offer best-in-class pricing without compromising on quality.' },
+                ].map((pt, i) => (
+                  <div key={i} className="flex gap-4 items-start">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 mb-1">{pt.title}</h4>
+                      <p className="text-gray-600 text-sm leading-relaxed">{pt.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-10 text-white">
+              <h4 className="text-2xl font-black mb-8 text-center">At a Glance</h4>
+              <div className="space-y-5">
+                {[
+                  { label: 'Founded', value: '1990' },
+                  { label: 'Headquarters', value: 'Anand, Gujarat, India' },
+                  { label: 'Products', value: '17 Chemical Intermediates' },
+                  { label: 'Annual Capacity', value: '50,000+ MT' },
+                  { label: 'Export Reach', value: '14+ Countries' },
+                  { label: 'Key Industries', value: 'Dye · Pigment · Pharma' },
+                  { label: 'Certifications', value: 'ISO 9001 · ISO 14001 · ZLD' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <span className="text-white/60 text-sm">{item.label}</span>
+                    <span className="text-white font-bold text-sm text-right">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <CoreTeamSection />
     </div>
   )
@@ -669,13 +841,19 @@ export default function VidhiHexachemWebsite() {
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="relative max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">Our Intermediate Products</h1>
-          <p className="text-xl text-cyan-400">Premium chemical intermediates for dye manufacturing</p>
+          <p className="text-xl text-cyan-400">Premium chemical intermediates for dye, pigment & pharmaceutical manufacturing</p>
         </div>
       </div>
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-4xl font-black text-slate-900 mb-4 text-center">Chemical Intermediates</h2>
-          <p className="text-center text-gray-700 max-w-2xl mx-auto mb-10">17 premium intermediates for dyes, pigments & specialty chemicals.</p>
+          <p className="text-center text-gray-700 max-w-2xl mx-auto mb-6">17 premium intermediates for dyes, pigments, pharmaceuticals & specialty chemicals.</p>
+          <div className="max-w-md mx-auto mb-8 relative">
+            <input type="text" placeholder="Search by name or CAS No…" value={productSearch} onChange={e => setProductSearch(e.target.value)}
+              className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-teal-500 transition-colors shadow-sm" />
+            <svg className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            {productSearch && <button onClick={() => setProductSearch('')} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>}
+          </div>
           <div className="overflow-x-auto rounded-xl shadow-lg">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -690,44 +868,54 @@ export default function VidhiHexachemWebsite() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p, idx) => {
-                  const StructComp = structures[p.sr]
-                  return (
-                    <tr key={idx} className={idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
-                      <td className="border border-gray-200 px-3 py-3 font-semibold text-slate-900 text-center">{p.sr}</td>
-                      <td className="border border-gray-200 px-3 py-3">
-                        <div className="font-bold text-slate-900 text-xs md:text-sm">{p.name}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">{p.fullname}</div>
-                      </td>
-                      <td className="border border-gray-200 px-3 py-3 text-slate-900 text-xs font-mono">{p.mw}</td>
-                      <td className="border border-gray-200 px-3 py-3 text-slate-900 text-xs font-mono">{p.cas}</td>
-                      <td className="border border-gray-200 px-3 py-3 text-center">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${
-                          parseInt(p.purity) >= 90 ? 'bg-green-100 text-green-700' :
-                          parseInt(p.purity) >= 75 ? 'bg-blue-100 text-blue-700' :
-                          p.purity === '-' ? 'bg-gray-100 text-gray-500' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>{p.purity}</span>
-                      </td>
-                      <td className="border border-gray-200 px-2 py-2 text-center">
-                        <div className="flex items-center justify-center">
-                          {StructComp ? <StructComp /> : <span className="text-gray-400 text-xs italic">Complex</span>}
-                        </div>
-                      </td>
-                      <td className="border border-gray-200 px-3 py-3 text-center">
-                        <button onClick={() => setInquiryProduct(p)}
-                          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-all duration-200 whitespace-nowrap shadow-sm hover:shadow-md">
-                          Inquire
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {(() => {
+                  const q = productSearch.toLowerCase()
+                  const filtered = q ? products.filter(p => p.name.toLowerCase().includes(q) || p.fullname.toLowerCase().includes(q) || p.cas.includes(q)) : products
+                  if (filtered.length === 0) return <tr><td colSpan={7} className="py-12 text-center text-gray-400 italic">No products match your search.</td></tr>
+                  return filtered.map((p, idx) => {
+                    const structSrc = `/structures/product-${p.sr}.png`
+                    return (
+                      <tr key={p.sr} className={`transition-colors duration-150 ${idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-blue-50`}>
+                        <td className="border border-gray-200 px-3 py-3 font-semibold text-slate-900 text-center">{p.sr}</td>
+                        <td className="border border-gray-200 px-3 py-3">
+                          <div className="font-bold text-slate-900 text-xs md:text-sm">{p.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{p.fullname}</div>
+                        </td>
+                        <td className="border border-gray-200 px-3 py-3 text-slate-900 text-xs font-mono">{p.mw}</td>
+                        <td className="border border-gray-200 px-3 py-3 text-slate-900 text-xs font-mono">{p.cas}</td>
+                        <td className="border border-gray-200 px-3 py-3 text-center">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${parseInt(p.purity) >= 90 ? 'bg-green-100 text-green-700' : parseInt(p.purity) >= 75 ? 'bg-blue-100 text-blue-700' : p.purity === '-' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>{p.purity}</span>
+                        </td>
+                        <td className="border border-gray-200 px-2 py-2 text-center">
+                          <button onClick={() => setZoomStructure({ src: structSrc, name: p.name })} className="group relative inline-block hover:scale-110 transition-transform duration-200 cursor-zoom-in">
+                            <img src={structSrc} alt={`${p.name} structure`} className="w-20 h-16 object-contain mx-auto" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                            <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-blue-600 bg-blue-50/80 rounded">&#128269; Zoom</span>
+                          </button>
+                        </td>
+                        <td className="border border-gray-200 px-3 py-3 text-center">
+                          <button onClick={() => setInquiryProduct(p)} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-all duration-200 whitespace-nowrap shadow-sm hover:shadow-md active:scale-95">
+                            Inquire
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                })()}
               </tbody>
             </table>
           </div>
         </div>
       </section>
+
+      {zoomStructure && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 px-4" onClick={() => setZoomStructure(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-black text-slate-900 mb-4">{zoomStructure.name}</h3>
+            <img src={zoomStructure.src} alt={zoomStructure.name} className="w-full object-contain max-h-64 mx-auto" />
+            <button onClick={() => setZoomStructure(null)} className="mt-6 bg-slate-900 text-white font-bold py-2 px-8 rounded-lg hover:bg-slate-700 transition-colors">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 
@@ -801,15 +989,107 @@ export default function VidhiHexachemWebsite() {
           </div>
         </div>
       </section>
+
+      {/* Manufacturing Process */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-gray-500 text-center mb-2">How We Work</h2>
+          <h3 className="text-4xl font-black text-center text-slate-900 mb-3">Our Manufacturing Process</h3>
+          <div className="w-16 h-1 bg-cyan-400 mx-auto mb-14 rounded-full"></div>
+          <div className="relative">
+            <div className="hidden md:block absolute top-8 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-200 via-cyan-300 to-teal-200 mx-24"></div>
+            <div className="grid md:grid-cols-5 gap-6">
+              {[
+                { step: '01', title: 'Raw Material Procurement', desc: 'Sourced from verified, high-grade suppliers with incoming quality inspection.' },
+                { step: '02', title: 'Synthesis & Reaction', desc: 'Controlled batch reactions in multi-reactor units with precise temp & pressure monitoring.' },
+                { step: '03', title: 'Purification', desc: 'Filtration, washing, and drying stages to achieve target purity specifications.' },
+                { step: '04', title: 'QA Testing', desc: 'Full analytical testing — HPLC, TLC, moisture, and purity — with CoA generation.' },
+                { step: '05', title: 'Packing & Dispatch', desc: 'Packed per order specs and dispatched with full documentation and traceability.' },
+              ].map((s, i) => (
+                <div key={i} className="text-center relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-black text-lg flex items-center justify-center mx-auto mb-4 shadow-lg z-10 relative">{s.step}</div>
+                  <h4 className="font-black text-slate-900 text-sm mb-2">{s.title}</h4>
+                  <p className="text-gray-500 text-xs leading-relaxed">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quality Control */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-sm uppercase tracking-widest text-gray-500 mb-2">Zero Compromise</h2>
+              <h3 className="text-4xl font-black text-slate-900 mb-6">Quality Control at Every Stage</h3>
+              <p className="text-gray-600 text-lg leading-relaxed mb-8">Our QA philosophy is built on the principle that quality cannot be tested in — it must be built in. From raw material intake to final dispatch, every stage is governed by strict protocols and documented for full traceability.</p>
+              <div className="space-y-4">
+                {[
+                  { label: 'Raw Material Testing', detail: 'Identity, purity, and moisture checks on every incoming lot' },
+                  { label: 'In-Process Monitoring', detail: 'Real-time pH, temperature, and reaction progress tracking' },
+                  { label: 'Finished Goods Analysis', detail: 'HPLC purity, loss on drying, heavy metals, and appearance tests' },
+                  { label: 'Batch Documentation', detail: 'Full CoA, MSDSs, and batch records issued with every shipment' },
+                  { label: 'Customer Feedback Loop', detail: 'Structured complaint and feedback process with root-cause analysis' },
+                ].map((q, i) => (
+                  <div key={i} className="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <svg className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{q.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{q.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <img src="/chemical-intermediate.jpeg" alt="Lab" className="rounded-2xl object-cover h-48 w-full shadow-md" />
+              <img src="/infrastructure-banner.jpg" alt="Facility" className="rounded-2xl object-cover h-48 w-full shadow-md" />
+              <div className="col-span-2 bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-6 text-white text-center">
+                <p className="text-4xl font-black text-cyan-400 mb-1">99.2%</p>
+                <p className="text-sm text-white/70">Average on-spec batch release rate across all product lines</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Safety & Environment */}
+      <section className="py-20 bg-gradient-to-br from-teal-900 to-slate-900 text-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-sm uppercase tracking-widest text-teal-400 text-center mb-2">Responsible Manufacturing</h2>
+          <h3 className="text-4xl font-black text-center mb-3">Safety & Environmental Commitment</h3>
+          <div className="w-16 h-1 bg-teal-400 mx-auto mb-14 rounded-full"></div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', title: 'Worker Safety', desc: 'Strict PPE protocols, regular safety drills, emergency response systems, and a zero-tolerance policy on unsafe practices.' },
+              { icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Zero Liquid Discharge', desc: 'Our ZLD effluent treatment plant ensures no liquid waste enters the environment, in full compliance with GPCB norms and ISO 14001.' },
+              { icon: 'M13 10V3L4 14h7v7l9-11h-7z', title: 'Energy Efficiency', desc: 'Heat recovery systems, energy-efficient reactor design, and solar supplementation at our facility reduce our overall carbon footprint.' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 text-center">
+                <div className="w-14 h-14 bg-teal-500/30 rounded-full flex items-center justify-center mx-auto mb-5">
+                  <svg className="w-7 h-7 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon}/></svg>
+                </div>
+                <h4 className="text-xl font-black mb-3">{s.title}</h4>
+                <p className="text-white/70 leading-relaxed text-sm">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 
   const ContactPage = () => (
     <div>
-      <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white py-20">
-        <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-5xl font-black mb-4">Get In Touch</h1>
-          <p className="text-xl text-cyan-400">{"We'd love to hear from you"}</p>
+      <div className="relative h-56 md:h-72 overflow-hidden">
+        <img src="/contact-banner.webp" alt="Contact Us" className="w-full h-full object-cover object-center" />
+        <div className="absolute inset-0 bg-black/40 flex items-center">
+          <div className="max-w-6xl mx-auto px-4 w-full">
+            <h1 className="text-5xl font-black text-white mb-2">Get In Touch</h1>
+            <p className="text-xl text-cyan-300">{"We'd love to hear from you"}</p>
+          </div>
         </div>
       </div>
       <section className="py-20 bg-white">
@@ -828,14 +1108,15 @@ export default function VidhiHexachemWebsite() {
                 <Mail className="text-blue-600 mt-1 flex-shrink-0" size={24} />
                 <div>
                   <h3 className="font-bold text-slate-900 mb-2">Email</h3>
-                  <p className="text-gray-700">info@vidhihexachem.in</p>
+                  <p className="text-gray-700">info@vidhihexachem.com</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <Phone className="text-blue-600 mt-1 flex-shrink-0" size={24} />
                 <div>
                   <h3 className="font-bold text-slate-900 mb-2">Phone</h3>
-                  <p className="text-gray-700">+91 79 4008 4484</p>
+                  <a href="tel:+916354665395" className="block text-gray-700 hover:text-blue-600 transition-colors">+91 63546 65395</a>
+                  <a href="tel:+919726864012" className="block text-gray-700 hover:text-blue-600 transition-colors">+91 97268 64012</a>
                 </div>
               </div>
               <div className="mt-10 pt-10 border-t-2 border-gray-200">
@@ -876,6 +1157,7 @@ export default function VidhiHexachemWebsite() {
                   <select name="product" className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
                     <option value="">Select a product</option>
                     {products.map(p => <option key={p.sr}>{p.name}</option>)}
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
@@ -924,8 +1206,9 @@ export default function VidhiHexachemWebsite() {
           <div>
             <h3 className="text-white font-bold mb-4">Connect</h3>
             <ul className="space-y-2">
-              <li><a href="mailto:info@vidhihexachem.in" className="hover:text-cyan-400 transition-colors">info@vidhihexachem.in</a></li>
-              <li><a href="tel:+917940084484" className="hover:text-cyan-400 transition-colors">+91 79 4008 4484</a></li>
+              <li><a href="mailto:info@vidhihexachem.com" className="hover:text-cyan-400 transition-colors">info@vidhihexachem.com</a></li>
+              <li><a href="tel:+916354665395" className="hover:text-cyan-400 transition-colors">+91 63546 65395</a></li>
+              <li><a href="tel:+919726864012" className="hover:text-cyan-400 transition-colors">+91 97268 64012</a></li>
               <li>Anand, Gujarat, India</li>
             </ul>
           </div>

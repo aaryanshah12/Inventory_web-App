@@ -513,8 +513,8 @@ export default function VidhiHexachemWebsite() {
         <div className="w-16 h-1 bg-cyan-400 mx-auto mb-12 rounded-full"></div>
         <div className="grid md:grid-cols-2 gap-12 max-w-2xl mx-auto">
           {[
-            { name: 'Nisarg Trivedi', role: 'Director & Operations Head', contact: '+91 63546 65395' },
-            { name: 'Vishnu Patel',   role: 'Director & Technical Head',   contact: '+91 98765 43211' },
+            { name: 'Nisarg Trivedi', role: 'Director', contact: '+91 63546 65395' },
+            { name: 'Vishnu Patel',   role: 'Director',   contact: '+91 97268 64012' },
           ].map((member, idx) => (
             <div key={idx} className="bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl text-center border border-gray-200 shadow-lg">
               <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-full mx-auto mb-6 flex items-center justify-center text-white font-black text-3xl shadow-lg">
@@ -548,7 +548,6 @@ export default function VidhiHexachemWebsite() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
         <div className="relative h-full flex items-center justify-center">
           <div className="text-center text-white z-10 px-4">
-            <h2 className="text-lg md:text-xl font-semibold text-cyan-400 mb-4">PREMIER CHEMICAL SOLUTIONS</h2>
             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
               THE CHEMISTRY OF <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">EXCELLENCE</span>
             </h1>
@@ -786,7 +785,8 @@ export default function VidhiHexachemWebsite() {
                 <Phone className="text-blue-600 mt-1 flex-shrink-0" size={24} />
                 <div>
                   <h3 className="font-bold text-slate-900 mb-2">Phone</h3>
-                  <p className="text-gray-700">+91 79 4008 4484</p>
+                  <p className="text-gray-700">+91 63546 65395</p>
+                  <p className="text-gray-700">+91 97268 64012</p>
                 </div>
               </div>
               <div className="mt-10 pt-10 border-t-2 border-gray-200">
@@ -866,7 +866,8 @@ export default function VidhiHexachemWebsite() {
             <h3 className="text-white font-bold mb-4">Connect</h3>
             <ul className="space-y-2">
               <li className="hover:text-cyan-400 cursor-pointer">info@vidhihexachem.com</li>
-              <li className="hover:text-cyan-400 cursor-pointer">+91 79 4008 4484</li>
+              <li className="hover:text-cyan-400 cursor-pointer">+91 63546 65395</li>
+              <li className="hover:text-cyan-400 cursor-pointer">+91 97268 64012</li>
               <li className="hover:text-cyan-400 cursor-pointer">Anand, Gujarat, India</li>
             </ul>
           </div>

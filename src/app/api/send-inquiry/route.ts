@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     await transporter.sendMail({
       from: `"Vidhi Hexachem Website" <${process.env.SMTP_USER}>`,
-      to: process.env.INQUIRY_TO ?? 'info@vidhihexachem.in',
+      to: process.env.INQUIRY_TO ?? 'info@vidhihexachem.com',
       replyTo: email,
       subject: subjectMap[type] ?? 'New Inquiry',
       html,
