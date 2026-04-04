@@ -614,7 +614,7 @@ export default function VidhiHexachemWebsite() {
       <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white py-20">
         <div className="max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">About Vidhi Hexachem</h1>
-          <p className="text-xl text-cyan-400">Building Excellence Since 1990</p>
+          <p className="text-xl text-cyan-400">Building Excellence Since 2020</p>
         </div>
       </div>
       <section className="py-20 bg-white">

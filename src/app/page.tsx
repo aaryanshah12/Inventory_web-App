@@ -388,6 +388,7 @@ export default function VidhiHexachemWebsite() {
     { id: 'about',          label: 'About Us' },
     { id: 'products',       label: 'Products' },
     { id: 'infrastructure', label: 'Infrastructure' },
+    { id: 'group',          label: 'Our Group' },
     { id: 'contact',        label: 'Contact' },
   ]
 
@@ -649,7 +650,7 @@ export default function VidhiHexachemWebsite() {
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="relative max-w-6xl mx-auto px-4">
           <h1 className="text-5xl font-black mb-4">About Vidhi Hexachem</h1>
-          <p className="text-xl text-cyan-400">Building Excellence Since 1990</p>
+          <p className="text-xl text-cyan-400">Building Excellence Since 2020</p>
         </div>
       </div>
       {/* Our Story */}
@@ -812,7 +813,7 @@ export default function VidhiHexachemWebsite() {
               <h4 className="text-2xl font-black mb-8 text-center">At a Glance</h4>
               <div className="space-y-5">
                 {[
-                  { label: 'Founded', value: '1990' },
+                  { label: 'Founded', value: '2020' },
                   { label: 'Headquarters', value: 'Anand, Gujarat, India' },
                   { label: 'Products', value: '17 Chemical Intermediates' },
                   { label: 'Annual Capacity', value: '50,000+ MT' },
@@ -1081,6 +1082,221 @@ export default function VidhiHexachemWebsite() {
     </div>
   )
 
+  const GroupPage = () => (
+    <div>
+      {/* Banner */}
+      <div className="relative text-white py-28 bg-cover bg-center overflow-hidden" style={{ backgroundImage: 'url("/group-banner.webp")' }}>
+        <div className="absolute inset-0 bg-slate-900/70"></div>
+        <div className="relative max-w-6xl mx-auto px-4 text-center">
+          <p className="text-sm uppercase tracking-widest text-cyan-400 mb-3">The Family Behind Us</p>
+          <h1 className="text-5xl font-black mb-4">Our Group Companies</h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">Vidhi Hexachem LLP is proud to be part of a larger legacy — backed by two of Gujarat's most respected names in dye and colorant manufacturing.</p>
+          {/* Parent logos in banner */}
+          <div className="flex items-center justify-center gap-10 mt-12">
+            <a href="https://www.bipinindustries.com/" target="_blank" rel="noopener noreferrer" className="bg-white rounded-2xl px-6 py-4 hover:scale-105 transition-transform duration-200 shadow-lg">
+              <img src="/bipin-logo.jpg" alt="Bipin Industries" className="h-12 object-contain" />
+            </a>
+            <div className="text-white/30 text-3xl font-light">×</div>
+            <a href="https://vidhiindustries.com/" target="_blank" rel="noopener noreferrer" className="bg-white rounded-2xl px-6 py-4 hover:scale-105 transition-transform duration-200 shadow-lg">
+              <img src="/vidhi-logo.png" alt="Vidhi Industries" className="h-12 object-contain" />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Introduction */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="bg-slate-50 border border-gray-100 rounded-2xl p-10 text-center max-w-3xl mx-auto">
+            <p className="text-gray-700 text-lg leading-relaxed">
+              Our parent companies — <strong className="text-slate-900">Bipin Industries</strong> and <strong className="text-slate-900">Vidhi Industries</strong> — bring over 55 years of combined expertise in dye manufacturing. Their deep industry knowledge, established client relationships, and operational excellence form the foundation on which Vidhi Hexachem was built and continues to grow.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Bipin Industries */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Logo header */}
+          <div className="flex items-center gap-5 mb-10">
+            <img src="/bipin-logo.jpg" alt="Bipin Industries" className="h-14 object-contain bg-white rounded-xl px-4 py-2 shadow-sm border border-gray-100" />
+            <div className="h-px flex-1 bg-gray-200"></div>
+            <span className="text-xs uppercase tracking-widest text-blue-600 font-bold whitespace-nowrap">Parent Company</span>
+          </div>
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <div>
+              <h2 className="text-4xl font-black text-slate-900 mb-2">Bipin Industries</h2>
+              <p className="text-blue-700 font-semibold italic text-lg mb-6">"Enrich Growth With Colours"</p>
+              <p className="text-gray-600 leading-relaxed mb-4 text-lg">
+                Founded in <strong>1988</strong> in Vatva, Ahmedabad, Bipin Industries has grown into a leading manufacturer and exporter of dyestuff and colorants serving the textile, leather, and food industries across global markets.
+              </p>
+              <p className="text-gray-600 leading-relaxed mb-8">
+                Operating from a <strong>36,500 sq. ft. ISO 9001-certified facility</strong>, Bipin Industries produces over <strong>500 tonnes per month</strong> of reactive dyes, acid dyes, food colors, and dye intermediates — serving 200+ satisfied clients worldwide with a commitment to colour consistency and technical excellence.
+              </p>
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {[
+                  { value: '1988', label: 'Year Founded' },
+                  { value: '500T+', label: 'Monthly Capacity' },
+                  { value: '200+', label: 'Global Clients' },
+                  { value: 'ISO 9001', label: 'Certified' },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-blue-100 p-5 text-center shadow-sm">
+                    <p className="text-2xl font-black text-blue-700">{s.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mb-8">
+                <p className="text-sm font-bold text-slate-700 mb-3">Product Portfolio</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Reactive Dyes', 'Acid Dyes', 'Food Colors', 'Dye Intermediates', 'Bifunctional Dyes', 'Vinyl Sulphone', 'Chlorotriazin'].map(t => (
+                    <span key={t} className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-8">
+                <p className="text-sm font-bold text-slate-700 mb-3">Industries Served</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Textile', 'Leather', 'Food & Beverage'].map(t => (
+                    <span key={t} className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <a href="https://www.bipinindustries.com/" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-8 rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-md">
+                Visit Bipin Industries
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+            <div className="space-y-5">
+              {/* Factory / product images */}
+              <div className="grid grid-cols-2 gap-3">
+                <img src="/bipin-product.jpg" alt="Bipin Industries — dyed textiles" className="rounded-2xl object-cover h-44 w-full shadow-md" />
+                <img src="/bipin-facility.jpg" alt="Bipin Industries — global reach" className="rounded-2xl object-cover h-44 w-full shadow-md" />
+              </div>
+              <div className="bg-gradient-to-br from-blue-700 to-indigo-800 rounded-2xl p-8 text-white">
+                <h4 className="text-xl font-black mb-5">Leadership</h4>
+                <div className="space-y-4">
+                  {[
+                    { name: 'Ketan Shah', role: 'Technical Head' },
+                    { name: 'Kush Kalaria', role: 'Finance' },
+                    { name: 'Chandrashekar Trivedi', role: 'Plant Operations & R&D' },
+                    { name: 'Chetan Chokshi', role: 'International Marketing & R&D' },
+                  ].map((m, i) => (
+                    <div key={i} className="flex items-center gap-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-sm flex-shrink-0">
+                        {m.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-white">{m.name}</p>
+                        <p className="text-blue-200 text-xs">{m.role}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm text-sm text-gray-600">
+                <span className="font-bold text-slate-900">Location: </span>GIDC Estate, Vatva, Ahmedabad, Gujarat, India
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-teal-500"></div>
+
+      {/* Vidhi Industries */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Logo header */}
+          <div className="flex items-center gap-5 mb-10">
+            <span className="text-xs uppercase tracking-widest text-teal-600 font-bold whitespace-nowrap">Parent Company</span>
+            <div className="h-px flex-1 bg-gray-200"></div>
+            <img src="/vidhi-logo.png" alt="Vidhi Industries" className="h-14 object-contain bg-white rounded-xl px-4 py-2 shadow-sm border border-gray-100" />
+          </div>
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <div className="order-2 md:order-1 space-y-5">
+              {/* Factory images */}
+              <img src="/vidhi-about.jpg" alt="Vidhi Industries factory" className="rounded-2xl object-cover w-full h-64 shadow-md" />
+              <div className="bg-gradient-to-br from-teal-600 to-cyan-700 rounded-2xl p-8 text-white">
+                <h4 className="text-xl font-black mb-5">At a Glance</h4>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Founded', value: '2006 (Legacy since 1965)' },
+                    { label: 'Location', value: 'GIDC Estate, Ahmedabad, Gujarat' },
+                    { label: 'Annual Capacity', value: '12,000+ MTA' },
+                    { label: 'Product Portfolio', value: '100+ Products' },
+                    { label: 'Global Clients', value: '200+ Satisfied Clients' },
+                    { label: 'Experience', value: '55+ Years in Industry' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex justify-between items-center border-b border-white/10 pb-3 last:border-0 last:pb-0">
+                      <span className="text-teal-100 text-sm">{item.label}</span>
+                      <span className="text-white font-bold text-sm text-right">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="order-1 md:order-2">
+              <h2 className="text-4xl font-black text-slate-900 mb-2">Vidhi Industries</h2>
+              <p className="text-teal-700 font-semibold italic text-lg mb-6">"The Color Touch Feeling"</p>
+              <p className="text-gray-600 leading-relaxed mb-4 text-lg">
+                With roots dating back to <strong>1965</strong> and formally established in 2006, Vidhi Industries carries over <strong>55 years of industry heritage</strong> in dye manufacturing. Based in the GIDC Estate, Ahmedabad, they are a trusted exporter to clients across the paper, pulp, and leather industries globally.
+              </p>
+              <p className="text-gray-600 leading-relaxed mb-8">
+                Their portfolio of <strong>100+ products</strong> — including direct dyes, basic dyes, acid dyes, and metal-complex non-benzidine formulations — supports an annual production capacity of <strong>12,000+ MTA</strong>, serving 200+ satisfied clients worldwide.
+              </p>
+              <div className="mb-8">
+                <p className="text-sm font-bold text-slate-700 mb-3">Product Portfolio</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Direct Dyes', 'Basic Dyes', 'Acid Dyes', 'Direct Dyes Mix', 'Metal Complex', 'Non-Benzidine'].map(t => (
+                    <span key={t} className="bg-teal-50 text-teal-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-teal-100">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-8">
+                <p className="text-sm font-bold text-slate-700 mb-3">Industries Served</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Paper & Pulp', 'Leather', 'Packaging'].map(t => (
+                    <span key={t} className="bg-cyan-50 text-cyan-700 text-xs font-semibold px-3 py-1.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <a href="https://vidhiindustries.com/" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-bold py-3 px-8 rounded-xl hover:from-teal-700 hover:to-cyan-700 transition-all duration-200 shadow-md">
+                Visit Vidhi Industries
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Group Strength Banner */}
+      <section className="py-16 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <h3 className="text-3xl font-black mb-4">Combined Group Strength</h3>
+          <p className="text-gray-300 max-w-2xl mx-auto mb-12">Together, Bipin Industries, Vidhi Industries, and Vidhi Hexachem LLP form a vertically integrated group covering the full spectrum — from dye intermediates to finished dyes — for industries worldwide.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { value: '55+', label: 'Years of Group Heritage' },
+              { value: '400+', label: 'Combined Global Clients' },
+              { value: '12.5K+', label: 'MTA Group Capacity' },
+              { value: '3', label: 'Specialised Companies' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white/10 rounded-2xl p-6 border border-white/20">
+                <p className="text-3xl font-black text-cyan-400 mb-1">{s.value}</p>
+                <p className="text-gray-300 text-sm">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+
   const ContactPage = () => (
     <div>
       <div className="relative h-56 md:h-72 overflow-hidden">
@@ -1200,6 +1416,7 @@ export default function VidhiHexachemWebsite() {
             <ul className="space-y-2">
               <li><button onClick={() => setCurrentPage('about')} className="hover:text-cyan-400 transition-colors">About Us</button></li>
               <li><button onClick={() => setCurrentPage('infrastructure')} className="hover:text-cyan-400 transition-colors">Infrastructure</button></li>
+              <li><button onClick={() => setCurrentPage('group')} className="hover:text-cyan-400 transition-colors">Our Group</button></li>
               <li><button onClick={() => setCurrentPage('contact')} className="hover:text-cyan-400 transition-colors">Contact</button></li>
             </ul>
           </div>
@@ -1227,6 +1444,7 @@ export default function VidhiHexachemWebsite() {
       {currentPage === 'about'          && <AboutPage />}
       {currentPage === 'products'       && <ProductsPage />}
       {currentPage === 'infrastructure' && <InfrastructurePage />}
+      {currentPage === 'group'          && <GroupPage />}
       {currentPage === 'contact'        && <ContactPage />}
       <Footer />
       {inquiryProduct && <InquiryModal product={inquiryProduct} onClose={() => setInquiryProduct(null)} />}
