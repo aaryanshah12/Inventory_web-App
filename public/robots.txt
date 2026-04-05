@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /inventory/
+
+Sitemap: https://vidhihexachem.in/sitemap.xml
