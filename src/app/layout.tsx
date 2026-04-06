@@ -30,8 +30,8 @@ export const metadata: Metadata = {
     description: 'Manufacturer and exporter of 17 premium chemical intermediates. Anand, Gujarat, India.',
   },
   icons: {
-    icon: '/vidhi-logo.png',
-    apple: '/vidhi-logo.png',
+    icon: '/image.png',
+    apple: '/image.png',
   },
   robots: {
     index: true,
