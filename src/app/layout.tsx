@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: 'https://vidhihexachem.in/factory-01.jpeg',
+        url: 'https://vidhihexachem.in/image.png',
         width: 1200,
         height: 630,
         alt: 'Vidhi Hexa Chem Manufacturing Facility',
