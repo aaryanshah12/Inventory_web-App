@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { fetchDomestics, saveDomestic, deleteDomestic, fetchCompanies, fetchProducts, fmtDate, today, exportCSV } from '@/lib/io/api'
+import { fetchDomestics, saveDomestic, deleteDomestic, fetchCompanies, fetchProducts, fmtDate, today } from '@/lib/io/api'
 import type { IODomestic, IOLineItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
-import { Plus, Pencil, Trash2, X, Save, Download, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload } from 'lucide-react'
 
 const EMPTY_ITEM = (): IOLineItem => ({ product_id: '', quantity: 1, price: 0, remarks: '' })
 
@@ -25,6 +25,10 @@ export default function DomesticPage() {
   const [items, setItems] = useState<IOLineItem[]>([EMPTY_ITEM()])
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCompanyModal, setShowCompanyModal] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importGroups, setImportGroups] = useState<any[]>([])
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { if (profile && factories.length > 0 && !factoryId) setFactoryId(factories[0].id) }, [profile])
   useEffect(() => { loadData() }, [factoryId])
@@ -48,6 +52,89 @@ export default function DomesticPage() {
   }
   async function handleDelete(id: string) { if (!confirm('Delete?')) return; await deleteDomestic(id); loadData() }
   function setItem(i: number, field: keyof IOLineItem, value: any) { setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it)) }
+
+  function downloadTemplate() {
+    const csv = 'Invoice No,Date,Customer,Factory,Product,Qty,Price (₹),Remarks\n,2024-01-15,Customer Name,Factory Name,Product Name,10,500,Optional notes'
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'domestic_template.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return
+    e.target.value = ''
+    let headers: string[] = []
+    let dataRows: string[][] = []
+    if (file.name.endsWith('.xlsx')) {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(await file.arrayBuffer())
+      const ws = wb.worksheets[0]
+      ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const vals = (row.values as any[]).slice(1).map(v => String(v ?? '').trim())
+        if (rowNumber === 1) { headers = vals.map(h => h.toLowerCase()); return }
+        dataRows.push(vals)
+      })
+    } else {
+      const text = await file.text()
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+      if (lines.length) headers = lines[0].split(',').map(s => s.trim().toLowerCase())
+      dataRows = lines.slice(1).map(line => line.split(',').map(s => s.trim()))
+    }
+    const col = (row: string[], name: string) => { const idx = headers.findIndex(h => h === name); return idx >= 0 ? (row[idx] ?? '') : '' }
+    const map: Record<string, any> = {}
+    for (const cols of dataRows) {
+      const date = col(cols, 'date'); const customerName = col(cols, 'customer'); const factoryName = col(cols, 'factory'); const productName = col(cols, 'product'); const qtyStr = col(cols, 'qty'); const priceStr = col(cols, 'price (₹)') || col(cols, 'price'); const remarks = col(cols, 'remarks')
+      const company = companies.find(c => c.company_name.toLowerCase() === customerName.toLowerCase())
+      const factory = factories.find(f => f.name.toLowerCase() === factoryName.toLowerCase())
+      const product = products.find(p => p.product_name.toLowerCase() === productName.toLowerCase())
+      const key = `${date}|${company?.id ?? customerName}|${factory?.id ?? ''}`
+      if (!map[key]) {
+        const errors: string[] = []
+        if (!company) errors.push(`Customer "${customerName}" not found`)
+        if (!factory && factories.length > 1) errors.push(`Factory "${factoryName}" not found`)
+        map[key] = { invoice_date: date, customer_id: company?.id ?? '', customer_name: company?.company_name ?? customerName, factory_id: factory?.id ?? factoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
+      }
+      map[key].items.push({ product_id: product?.id ?? '', product_name: product?.product_name ?? productName, quantity: parseFloat(qtyStr) || 0, price: parseFloat(priceStr) || 0, remarks: remarks ?? '', error: !product ? `"${productName}" not found` : '' })
+    }
+    setImportGroups(Object.values(map)); setImportOpen(true)
+  }
+  async function handleImportConfirm() {
+    const valid = importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.product_id))
+    if (!valid.length) return
+    setImporting(true)
+    try {
+      for (const g of valid) {
+        await saveDomestic({ invoice_date: g.invoice_date, customer_id: g.customer_id || null, remarks: null, factory_id: g.factory_id || null, items: g.items.filter((it: any) => it.product_id).map((it: any) => ({ product_id: it.product_id, quantity: it.quantity, price: it.price, remarks: it.remarks })) })
+      }
+      setImportOpen(false); setImportGroups([]); loadData()
+    } catch (e: any) { alert(e.message) } finally { setImporting(false) }
+  }
+
+  async function handleExport() {
+    if (!filtered.length) return
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Domestic')
+    const headers = ['Invoice No', 'Date', 'Customer', 'Factory', 'Product', 'Qty', 'Price (₹)', 'Remarks']
+    const hRow = ws.addRow(headers)
+    hRow.font = { bold: true, size: 11 }
+    hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }
+    hRow.border = { bottom: { style: 'thin', color: { argb: 'FFCCA300' } } }
+    hRow.alignment = { vertical: 'middle' }
+    filtered.forEach(r => {
+      const base = [r.invoice_number, r.invoice_date, r.customer?.company_name ?? '', r.factory?.name ?? '']
+      if (!(r.items ?? []).length) { ws.addRow([...base, '', '', '', '']); return }
+      ;(r.items ?? []).forEach((it: IOLineItem) => ws.addRow([...base, it.product?.product_name ?? products.find(p => p.id === it.product_id)?.product_name ?? '', it.quantity, it.price, it.remarks ?? '']))
+    })
+    ws.columns.forEach((col, i) => { col.width = Math.min(Math.max(headers[i].length + 4, 14), 40) })
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'domestic.xlsx'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const filtered = rows.filter(r => r.invoice_number.toLowerCase().includes(search.toLowerCase()) || (r.customer?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
   const rowTotal = (its: IOLineItem[]) => its.reduce((s, it) => s + it.price * it.quantity, 0)
 
@@ -57,7 +144,9 @@ export default function DomesticPage() {
         <div><h1 className="text-xl font-bold text-primary">Domestic</h1><p className="text-sm text-muted mt-0.5">{filtered.length} invoices</p></div>
         <div className="flex items-center gap-2 flex-wrap">
           {factories.length > 1 && <select value={factoryId} onChange={e => setFactoryId(e.target.value)} className="input"><option value="">All</option>{factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select>}
-          <button onClick={() => exportCSV(filtered.map(r => ({ 'Invoice No': r.invoice_number, Date: r.invoice_date, Customer: r.customer?.company_name ?? '' })), 'domestic.csv')} className="btn btn-ghost"><Download size={14}/> Export</button>
+          <input ref={importRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile}/>
+          <button onClick={() => importRef.current?.click()} className="btn btn-ghost"><Upload size={14}/> Import</button>
+          <button onClick={handleExport} className="btn btn-ghost"><Download size={14}/> Export</button>
           <button onClick={openNew} className="btn btn-inputer"><Plus size={15}/> New Invoice</button>
         </div>
       </div>
@@ -88,6 +177,7 @@ export default function DomesticPage() {
           </tbody>
         </table>
       </div>
+
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="rounded-2xl shadow-2xl w-full max-w-3xl my-6 border border-border" style={{ background: 'var(--color-panel)' }}>
@@ -134,6 +224,66 @@ export default function DomesticPage() {
           </div>
         </div>
       )}
+
+      {/* Import Preview Modal */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="rounded-2xl shadow-2xl w-full max-w-4xl my-6 border border-border" style={{ background: 'var(--color-panel)' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-bold text-primary">Import Domestic Invoices</h2>
+                <p className="text-xs text-muted mt-0.5">{importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.product_id)).length} valid / {importGroups.length} total records</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={downloadTemplate} className="btn btn-ghost text-xs"><Download size={12}/> Template</button>
+                <button onClick={() => { setImportOpen(false); setImportGroups([]) }} className="text-muted hover:text-primary"><X size={18}/></button>
+              </div>
+            </div>
+            <div className="overflow-x-auto" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="w-full text-xs">
+                <thead style={{ background: 'var(--color-surface)', position: 'sticky', top: 0 }}>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-3 py-2 text-muted font-semibold w-8"></th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Date</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Customer</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Factory</th>
+                    <th className="text-right px-3 py-2 text-muted font-semibold">Items</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Issues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importGroups.map((g, i) => {
+                    const itemErrors = g.items.filter((it: any) => it.error).map((it: any) => it.error)
+                    const allErrors = [...g.errors, ...itemErrors]
+                    const valid = allErrors.length === 0 && g.items.some((it: any) => it.product_id)
+                    return (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2 text-center">{valid ? <span className="text-green-500 font-bold text-sm">✓</span> : <span className="text-red-400 font-bold text-sm">✗</span>}</td>
+                        <td className="px-3 py-2 font-mono">{g.invoice_date}</td>
+                        <td className="px-3 py-2">{g.customer_name || '—'}</td>
+                        <td className="px-3 py-2 text-muted">{g.factory_name || '—'}</td>
+                        <td className="px-3 py-2 text-right">{g.items.length}</td>
+                        <td className="px-3 py-2 text-red-400">{allErrors.length ? allErrors.join('; ') : <span className="text-green-500">OK</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+              <p className="text-xs text-muted">Rows with ✗ will be skipped. Ensure company and product names match exactly.</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setImportOpen(false); setImportGroups([]) }} className="btn btn-ghost">Cancel</button>
+                <button onClick={handleImportConfirm} disabled={importing || !importGroups.some(g => !g.errors.length && g.items.some((it: any) => it.product_id))} className="btn btn-inputer">
+                  {importing ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Upload size={14}/>}
+                  Import {importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.product_id)).length} Records
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showProductModal && <ProductModal onClose={() => setShowProductModal(false)} onSaved={async (p) => { const upd = await fetchProducts(); setProducts(upd); setItems(prev => { const last = prev[prev.length-1]; return last && !last.product_id ? [...prev.slice(0,-1), {...last, product_id: p.id}] : prev }); setShowProductModal(false) }}/>}
       {showCompanyModal && <CompanyModal defaultType="customer" onClose={() => setShowCompanyModal(false)} onSaved={async (c) => { const upd = await fetchCompanies('customer'); setCompanies(upd); setForm(f => ({ ...f, customer_id: c.id })); setShowCompanyModal(false) }}/>}
     </div>

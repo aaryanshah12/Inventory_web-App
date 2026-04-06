@@ -1,12 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { fetchQuotations, saveQuotation, deleteQuotation, fetchCompanies, fetchProducts, fmtDate, today, exportCSV } from '@/lib/io/api'
+import { fetchQuotations, saveQuotation, deleteQuotation, fetchCompanies, fetchProducts, fmtDate, today } from '@/lib/io/api'
 import type { IOQuotation, IOQuotationItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
 import RichTextEditor from '@/components/io/RichTextEditor'
-import { Plus, Pencil, Trash2, X, Save, Download, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload } from 'lucide-react'
 
 const EMPTY_ITEM = (): IOQuotationItem => ({ reference_no: '', product_id: '', product_name_override: '', price: 0 })
 
@@ -39,6 +39,10 @@ export default function QuotationPage() {
   const [items, setItems] = useState<IOQuotationItem[]>([EMPTY_ITEM()])
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCompanyModal, setShowCompanyModal] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importGroups, setImportGroups] = useState<any[]>([])
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { if (profile && factories.length > 0 && !factoryId) setFactoryId(factories[0].id) }, [profile])
   useEffect(() => { loadData() }, [factoryId])
@@ -77,6 +81,89 @@ export default function QuotationPage() {
   }
   async function handleDelete(id: string) { if (!confirm('Delete?')) return; await deleteQuotation(id); loadData() }
   function setItem(i: number, field: keyof IOQuotationItem, value: any) { setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it)) }
+
+  function downloadTemplate() {
+    const csv = 'Quotation No,Date,Customer,Factory,Ref No,Product,Price (₹)\n,2024-01-15,Customer Name,Factory Name,Q001,Product Name,1500'
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'quotation_template.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return
+    e.target.value = ''
+    let headers: string[] = []
+    let dataRows: string[][] = []
+    if (file.name.endsWith('.xlsx')) {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(await file.arrayBuffer())
+      const ws = wb.worksheets[0]
+      ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const vals = (row.values as any[]).slice(1).map(v => String(v ?? '').trim())
+        if (rowNumber === 1) { headers = vals.map(h => h.toLowerCase()); return }
+        dataRows.push(vals)
+      })
+    } else {
+      const text = await file.text()
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+      if (lines.length) headers = lines[0].split(',').map(s => s.trim().toLowerCase())
+      dataRows = lines.slice(1).map(line => line.split(',').map(s => s.trim()))
+    }
+    const col = (row: string[], name: string) => { const idx = headers.findIndex(h => h === name); return idx >= 0 ? (row[idx] ?? '') : '' }
+    const map: Record<string, any> = {}
+    for (const cols of dataRows) {
+      const date = col(cols, 'date'); const customerName = col(cols, 'customer'); const factoryName = col(cols, 'factory'); const refNo = col(cols, 'ref no'); const productName = col(cols, 'product'); const priceStr = col(cols, 'price (₹)') || col(cols, 'price')
+      const company = companies.find(c => c.company_name.toLowerCase() === customerName.toLowerCase())
+      const factory = factories.find(f => f.name.toLowerCase() === factoryName.toLowerCase())
+      const product = products.find(p => p.product_name.toLowerCase() === productName.toLowerCase())
+      const key = `${date}|${company?.id ?? customerName}|${factory?.id ?? ''}`
+      if (!map[key]) {
+        const errors: string[] = []
+        if (!company) errors.push(`Customer "${customerName}" not found`)
+        if (!factory && factories.length > 1) errors.push(`Factory "${factoryName}" not found`)
+        map[key] = { quotation_date: date, customer_id: company?.id ?? '', customer_name: company?.company_name ?? customerName, factory_id: factory?.id ?? factoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
+      }
+      map[key].items.push({ reference_no: refNo ?? '', product_id: product?.id ?? '', product_name: product?.product_name ?? productName, product_name_override: product ? '' : (productName ?? ''), price: parseFloat(priceStr) || 0, error: (!product && !productName) ? 'Missing product' : '' })
+    }
+    setImportGroups(Object.values(map)); setImportOpen(true)
+  }
+  async function handleImportConfirm() {
+    const valid = importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.price > 0))
+    if (!valid.length) return
+    setImporting(true)
+    try {
+      for (const g of valid) {
+        await saveQuotation({ quotation_date: g.quotation_date, customer_id: g.customer_id || null, factory_id: g.factory_id || null, header_content: null, footer_content: null, items: g.items.filter((it: any) => it.price > 0).map((it: any) => ({ reference_no: it.reference_no, product_id: it.product_id || null, product_name_override: it.product_name_override || '', price: it.price })) })
+      }
+      setImportOpen(false); setImportGroups([]); loadData()
+    } catch (e: any) { alert(e.message) } finally { setImporting(false) }
+  }
+
+  async function handleExport() {
+    if (!filtered.length) return
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Quotations')
+    const headers = ['Quotation No', 'Date', 'Customer', 'Factory', 'Ref No', 'Product', 'Price (₹)']
+    const hRow = ws.addRow(headers)
+    hRow.font = { bold: true, size: 11 }
+    hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }
+    hRow.border = { bottom: { style: 'thin', color: { argb: 'FFCCA300' } } }
+    hRow.alignment = { vertical: 'middle' }
+    filtered.forEach(r => {
+      const base = [r.quotation_number, r.quotation_date, r.customer?.company_name ?? '', r.factory?.name ?? '']
+      if (!(r.items ?? []).length) { ws.addRow([...base, '', '', '']); return }
+      ;(r.items ?? []).forEach((it: IOQuotationItem) => ws.addRow([...base, it.reference_no ?? '', it.product_name_override || (products.find(p => p.id === it.product_id)?.product_name ?? ''), it.price]))
+    })
+    ws.columns.forEach((col, i) => { col.width = Math.min(Math.max(headers[i].length + 4, 14), 40) })
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'quotations.xlsx'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const filtered = rows.filter(r => r.quotation_number.toLowerCase().includes(search.toLowerCase()) || (r.customer?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
   const rowTotal = (its: IOQuotationItem[]) => its.reduce((s, it) => s + it.price, 0)
 
@@ -86,7 +173,9 @@ export default function QuotationPage() {
         <div><h1 className="text-xl font-bold text-primary">Quotations</h1><p className="text-sm text-muted mt-0.5">{filtered.length} records</p></div>
         <div className="flex items-center gap-2 flex-wrap">
           {factories.length > 1 && <select value={factoryId} onChange={e => setFactoryId(e.target.value)} className="input"><option value="">All</option>{factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select>}
-          <button onClick={() => exportCSV(filtered.map(r => ({ 'Quotation No': r.quotation_number, Date: r.quotation_date, Customer: r.customer?.company_name ?? '' })), 'quotations.csv')} className="btn btn-ghost"><Download size={14}/> Export</button>
+          <input ref={importRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile}/>
+          <button onClick={() => importRef.current?.click()} className="btn btn-ghost"><Upload size={14}/> Import</button>
+          <button onClick={handleExport} className="btn btn-ghost"><Download size={14}/> Export</button>
           <button onClick={openNew} className="btn btn-inputer"><Plus size={15}/> New Quotation</button>
         </div>
       </div>
@@ -246,6 +335,64 @@ export default function QuotationPage() {
                 {saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Save size={14}/>}
                 {editing ? 'Update' : 'Save'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Preview Modal */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="rounded-2xl shadow-2xl w-full max-w-4xl my-6 border border-border" style={{ background: 'var(--color-panel)' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-bold text-primary">Import Quotations</h2>
+                <p className="text-xs text-muted mt-0.5">{importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.price > 0)).length} valid / {importGroups.length} total records</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={downloadTemplate} className="btn btn-ghost text-xs"><Download size={12}/> Template</button>
+                <button onClick={() => { setImportOpen(false); setImportGroups([]) }} className="text-muted hover:text-primary"><X size={18}/></button>
+              </div>
+            </div>
+            <div className="overflow-x-auto" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="w-full text-xs">
+                <thead style={{ background: 'var(--color-surface)', position: 'sticky', top: 0 }}>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-3 py-2 text-muted font-semibold w-8"></th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Date</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Customer</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Factory</th>
+                    <th className="text-right px-3 py-2 text-muted font-semibold">Items</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Issues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importGroups.map((g, i) => {
+                    const allErrors = [...g.errors]
+                    const valid = allErrors.length === 0 && g.items.some((it: any) => it.price > 0)
+                    return (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2 text-center">{valid ? <span className="text-green-500 font-bold text-sm">✓</span> : <span className="text-red-400 font-bold text-sm">✗</span>}</td>
+                        <td className="px-3 py-2 font-mono">{g.quotation_date}</td>
+                        <td className="px-3 py-2">{g.customer_name || '—'}</td>
+                        <td className="px-3 py-2 text-muted">{g.factory_name || '—'}</td>
+                        <td className="px-3 py-2 text-right">{g.items.length}</td>
+                        <td className="px-3 py-2 text-red-400">{allErrors.length ? allErrors.join('; ') : <span className="text-green-500">OK</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+              <p className="text-xs text-muted">Rows with ✗ will be skipped. Customer names must match exactly.</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setImportOpen(false); setImportGroups([]) }} className="btn btn-ghost">Cancel</button>
+                <button onClick={handleImportConfirm} disabled={importing || !importGroups.some(g => !g.errors.length && g.items.some((it: any) => it.price > 0))} className="btn btn-inputer">
+                  {importing ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Upload size={14}/>}
+                  Import {importGroups.filter(g => !g.errors.length && g.items.some((it: any) => it.price > 0)).length} Records
+                </button>
+              </div>
             </div>
           </div>
         </div>
