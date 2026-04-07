@@ -563,11 +563,11 @@ export default function VidhiHexachemWebsite() {
   )
 
   const factoryImages = [
+    '/factory-08.jpeg',  // factory image
     '/factory-01.jpeg',  // dramatic boiler room — dark industrial
-    '/factory-02.jpeg',  // tall cyclone separator — impressive scale
-    '/factory-07.jpeg',  // blue reactor vessel — matches website blue
+    '/factory-40.jpeg',  // blue reactor vessel — matches website blue
     '/factory-13.jpeg',  // blue cylindrical storage tank — clean
-    '/factory-28.jpeg',  // exterior building / facility overview
+    '/factory-33.jpeg',  // exterior building / facility overview
   ]
 
   const HomeBanner = () => {
