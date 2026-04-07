@@ -30,6 +30,7 @@ export default function IOLoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
+      localStorage.removeItem('io-factory-id')
       localStorage.setItem(REMEMBER_KEY, rememberMe ? 'true' : 'false')
       localStorage.setItem(SESSION_KEY, Date.now().toString())
       router.replace('/inward-outward/dashboard')

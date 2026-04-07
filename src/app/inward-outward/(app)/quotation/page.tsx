@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useIOFactory } from '@/contexts/IOFactoryContext'
 import { fetchQuotations, saveQuotation, deleteQuotation, fetchCompanies, fetchProducts, fmtDate, today } from '@/lib/io/api'
 import type { IOQuotation, IOQuotationItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
@@ -21,9 +21,7 @@ const DEFAULT_FOOTER = `The above price is for
 * Any other type of packing will cost extra`
 
 export default function QuotationPage() {
-  const { profile } = useAuth()
-  const factories = profile?.factories ?? []
-  const [factoryId, setFactoryId] = useState('')
+  const { factoryId, factories } = useIOFactory()
   const [rows, setRows] = useState<IOQuotation[]>([])
   const [companies, setCompanies] = useState<IOCompany[]>([])
   const [products, setProducts] = useState<IOProduct[]>([])
@@ -44,13 +42,12 @@ export default function QuotationPage() {
   const [importGroups, setImportGroups] = useState<any[]>([])
   const [importing, setImporting] = useState(false)
 
-  useEffect(() => { if (profile && factories.length > 0 && !factoryId) setFactoryId(factories[0].id) }, [profile])
   useEffect(() => { loadData() }, [factoryId])
 
   async function loadData() {
     setLoading(true)
     try {
-      const [r, c, p] = await Promise.all([fetchQuotations(factoryId || undefined), fetchCompanies('customer'), fetchProducts()])
+      const [r, c, p] = await Promise.all([fetchQuotations(factoryId || undefined), fetchCompanies('customer', factoryId || undefined), fetchProducts(factoryId || undefined)])
       setRows(r); setCompanies(c); setProducts(p)
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }
@@ -172,7 +169,6 @@ export default function QuotationPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div><h1 className="text-xl font-bold text-primary">Quotations</h1><p className="text-sm text-muted mt-0.5">{filtered.length} records</p></div>
         <div className="flex items-center gap-2 flex-wrap">
-          {factories.length > 1 && <select value={factoryId} onChange={e => setFactoryId(e.target.value)} className="input"><option value="">All</option>{factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select>}
           <input ref={importRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile}/>
           <button onClick={() => importRef.current?.click()} className="btn btn-ghost"><Upload size={14}/> Import</button>
           <button onClick={handleExport} className="btn btn-ghost"><Download size={14}/> Export</button>
@@ -186,27 +182,53 @@ export default function QuotationPage() {
       </div>
 
       <div className="card overflow-hidden">
-        <table className="data-table">
-          <thead><tr><th>Quotation No</th><th>Date</th><th>Customer</th><th>Factory</th><th className="text-right">Total</th><th className="text-right">Items</th><th/></tr></thead>
-          <tbody>
-            {loading ? <tr><td colSpan={7} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
-            : filtered.length === 0 ? <tr><td colSpan={7} className="py-12 text-center text-muted text-sm">No quotations</td></tr>
-            : filtered.map(row => (
-              <tr key={row.id}>
-                <td className="font-mono font-semibold text-xs">{row.quotation_number}</td>
-                <td className="text-xs">{fmtDate(row.quotation_date)}</td>
-                <td>{row.customer?.company_name ?? '—'}</td>
-                <td className="text-xs text-muted">{row.factory?.name ?? '—'}</td>
-                <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
-                <td className="text-right"><div className="flex items-center justify-end gap-1">
-                  <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
-                  <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
-                </div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="sm:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
+          {loading ? <div className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></div>
+          : filtered.length === 0 ? <div className="py-12 text-center text-muted text-sm">No quotations</div>
+          : filtered.map(row => (
+            <div key={row.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-mono font-semibold text-xs text-inputer">{row.quotation_number}</div>
+                  <div className="text-xs text-muted mt-0.5">{fmtDate(row.quotation_date)}</div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => openEdit(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={14}/></button>
+                  <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
+                </div>
+              </div>
+              <div className="text-sm font-medium text-primary">{row.customer?.company_name ?? '—'}</div>
+              {row.factory && <div className="text-xs text-inputer">{row.factory.name}</div>}
+              <div className="flex items-center justify-between pt-1 border-t border-border">
+                <span className="text-xs text-muted">{row.items?.length ?? 0} items</span>
+                <span className="font-bold text-sm text-primary">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="data-table">
+            <thead><tr><th>Quotation No</th><th>Date</th><th>Customer</th><th>Factory</th><th className="text-right">Total</th><th className="text-right">Items</th><th/></tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan={7} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
+              : filtered.length === 0 ? <tr><td colSpan={7} className="py-12 text-center text-muted text-sm">No quotations</td></tr>
+              : filtered.map(row => (
+                <tr key={row.id}>
+                  <td className="font-mono font-semibold text-xs">{row.quotation_number}</td>
+                  <td className="text-xs">{fmtDate(row.quotation_date)}</td>
+                  <td>{row.customer?.company_name ?? '—'}</td>
+                  <td className="text-xs text-muted">{row.factory?.name ?? '—'}</td>
+                  <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                  <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
+                  <td className="text-right"><div className="flex items-center justify-end gap-1">
+                    <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
+                    <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Form Modal */}

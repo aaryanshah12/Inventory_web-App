@@ -7,8 +7,10 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Package, FlaskConical,
   BarChart3, LogOut, ChevronRight,
-  Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine, Settings, TrendingUp
+  Menu, X, Sun, Moon, CalendarRange, ArrowDownToLine, ArrowUpToLine, Settings, TrendingUp,
+  Building2, ChevronDown, Check,
 } from 'lucide-react'
+import { useInventoryFactory, clearInventoryFactory } from '@/contexts/InventoryFactoryContext'
 
 interface NavItem { href: string; label: string; icon: React.ReactNode }
 
@@ -55,6 +57,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [themeMounted, setThemeMounted] = useState(false)
+  const [factorySwitcherOpen, setFactorySwitcherOpen] = useState(false)
+  const { factoryId, setFactoryId, factories } = useInventoryFactory()
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
 
@@ -74,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [theme, themeMounted])
 
   async function handleSignOut() {
+    clearInventoryFactory()
     await signOut()
     router.replace('/inventory/login')
   }
@@ -165,16 +170,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <NavLinks />
 
-      {/* Factories */}
-      {profile?.factories && profile.factories.length > 0 && (
+      {/* Factory switcher */}
+      {factories.length > 1 && (
         <div className="px-4 py-3 border-t border-border">
-          <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-2">Assigned Factories</div>
-          {profile.factories.slice(0, 3).map((f: any) => (
-            <div key={f.id} className="flex items-center gap-2 py-1">
-              <div className={clsx('w-1.5 h-1.5 rounded-full', accentBg)} />
-              <span className="text-xs text-muted truncate">{f.name}</span>
-            </div>
-          ))}
+          <div className="font-mono text-[10px] text-muted uppercase tracking-widest mb-2">Factory</div>
+          <div className="relative">
+            <button
+              onClick={() => setFactorySwitcherOpen(v => !v)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-lg border text-sm font-medium transition-all"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--color-layer-sm)', color: 'var(--color-text)' }}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 size={13} className={accentText} />
+                <span className="truncate">{factories.find(f => f.id === factoryId)?.name ?? 'Select factory'}</span>
+              </div>
+              <ChevronDown size={13} className="text-muted flex-shrink-0" />
+            </button>
+            {factorySwitcherOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setFactorySwitcherOpen(false)} />
+                <div
+                  className="absolute left-0 right-0 bottom-full mb-1 z-50 rounded-xl border overflow-hidden shadow-xl"
+                  style={{ background: 'var(--color-panel)', borderColor: 'var(--color-border)' }}
+                >
+                  {factories.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => { setFactoryId(f.id); setFactorySwitcherOpen(false) }}
+                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm transition-all hover:bg-layer-sm"
+                    >
+                      <span style={{ color: f.id === factoryId ? `var(--color-${role})` : 'var(--color-text)', fontWeight: f.id === factoryId ? 600 : 400 }}>
+                        {f.name}
+                      </span>
+                      {f.id === factoryId && <Check size={13} style={{ color: `var(--color-${role})` }} />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -213,14 +247,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
 
         {/* Mobile top bar */}
-        <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-panel border-b border-border">
-          <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-primary p-2">
+        <div className="lg:hidden sticky top-0 z-20 flex items-center gap-2 px-4 py-3 bg-panel border-b border-border">
+          <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-primary p-2 flex-shrink-0">
             <Menu size={22} />
           </button>
-          <div className="font-display text-base font-bold text-primary tracking-wider uppercase">
+          <div className="font-display text-base font-bold text-primary tracking-wider uppercase flex-1 min-w-0 truncate">
             Chem<span className={accentText}>Factory</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Mobile factory switcher */}
+            {factories.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={() => setFactorySwitcherOpen(v => !v)}
+                  className={clsx('flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all', roleColors[role])}
+                >
+                  <Building2 size={11} />
+                  <span className="max-w-[80px] truncate">{factories.find(f => f.id === factoryId)?.name ?? 'Factory'}</span>
+                  <ChevronDown size={10} />
+                </button>
+                {factorySwitcherOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setFactorySwitcherOpen(false)} />
+                    <div
+                      className="absolute right-0 top-full mt-1 w-48 z-50 rounded-xl border overflow-hidden shadow-xl"
+                      style={{ background: 'var(--color-panel)', borderColor: 'var(--color-border)' }}
+                    >
+                      {factories.map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => { setFactoryId(f.id); setFactorySwitcherOpen(false) }}
+                          className="flex items-center justify-between w-full px-3 py-2.5 text-sm transition-all hover:bg-layer-sm"
+                        >
+                          <span style={{ color: f.id === factoryId ? `var(--color-${role})` : 'var(--color-text)', fontWeight: f.id === factoryId ? 600 : 400 }}>
+                            {f.name}
+                          </span>
+                          {f.id === factoryId && <Check size={13} style={{ color: `var(--color-${role})` }} />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <button
               onClick={toggleTheme}
               className="text-muted hover:text-primary p-2 border border-border rounded-lg bg-layer-sm"
@@ -228,7 +297,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               {!themeMounted || theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
             </button>
-            <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold', roleColors[role])}>
+            <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0', roleColors[role])}>
               {profile?.full_name?.charAt(0).toUpperCase() ?? '?'}
             </div>
           </div>

@@ -4,14 +4,21 @@ import AppLayout from '@/components/layout/AppLayout'
 import PageHeader from '@/components/ui/PageHeader'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { useInventoryFactory } from '@/contexts/InventoryFactoryContext'
 
 export default function OwnerUsagePage() {
   const { profile, loading: authLoading } = useAuth()
+  const { factoryId: ctxFactoryId } = useInventoryFactory()
   const [entries, setEntries]     = useState<any[]>([])
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState('')
   const [factory, setFactory]     = useState('all')
   const [factories, setFactories] = useState<any[]>([])
+
+  // Sync filter when sidebar switcher changes
+  useEffect(() => {
+    setFactory(ctxFactoryId || 'all')
+  }, [ctxFactoryId])
 
   useEffect(() => {
     async function load() {

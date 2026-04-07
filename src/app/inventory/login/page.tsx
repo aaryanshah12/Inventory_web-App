@@ -23,6 +23,8 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setSigningIn(true); setError('')
+    // Clear saved factory so picker modal appears after login
+    localStorage.removeItem('inv-factory-id')
     const { error } = await signIn(email, password)
     if (error) {
       setError(error)

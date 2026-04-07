@@ -6,11 +6,12 @@ import { X, Save } from 'lucide-react'
 
 interface Props {
   editing?: IOProduct | null
+  factoryId?: string | null
   onClose: () => void
   onSaved: (product: IOProduct) => void
 }
 
-export default function ProductModal({ editing, onClose, onSaved }: Props) {
+export default function ProductModal({ editing, factoryId, onClose, onSaved }: Props) {
   const [units, setUnits] = useState<IOUnit[]>([])
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -31,6 +32,7 @@ export default function ProductModal({ editing, onClose, onSaved }: Props) {
     try {
       const saved = await saveProduct({
         id:           editing?.id,
+        factory_id:   editing ? editing.factory_id : (factoryId ?? null),
         product_name: form.product_name.trim(),
         description:  form.description || null,
         hsn_code:     form.hsn_code || null,

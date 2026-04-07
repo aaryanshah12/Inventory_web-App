@@ -102,6 +102,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    if (role === 'owner') {
+      return NextResponse.json({ error: 'Cannot create users with owner role' }, { status: 403 })
+    }
+
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({
         error: 'SUPABASE_SERVICE_ROLE_KEY missing from .env.local — add it and restart the server'
@@ -160,6 +164,10 @@ export async function PATCH(request: NextRequest) {
 
     const { id, full_name, phone, role, is_active, factory_ids } = await request.json()
     if (!id) return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+
+    if (role === 'owner') {
+      return NextResponse.json({ error: 'Cannot assign owner role' }, { status: 403 })
+    }
 
     // Update profile fields
     const updates: any = {}

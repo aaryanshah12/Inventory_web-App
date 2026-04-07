@@ -6,14 +6,21 @@ import { supabase } from '@/lib/supabase'
 import { StockEntry } from '@/types'
 import { Download } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useInventoryFactory } from '@/contexts/InventoryFactoryContext'
 
 export default function OwnerStockPage() {
   const { profile, loading: authLoading } = useAuth()
+  const { factoryId: ctxFactoryId } = useInventoryFactory()
   const [entries, setEntries]     = useState<StockEntry[]>([])
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState('')
   const [factory, setFactory]     = useState('all')
   const [factories, setFactories] = useState<any[]>([])
+
+  // Sync filter when sidebar switcher changes
+  useEffect(() => {
+    setFactory(ctxFactoryId || 'all')
+  }, [ctxFactoryId])
 
   useEffect(() => {
     async function load() {

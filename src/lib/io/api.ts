@@ -105,17 +105,19 @@ export const deleteCity = async (id: number) => {
 }
 
 // ── Companies ─────────────────────────────────────────────────
-export const fetchCompanies = async (type?: CompanyType | 'all'): Promise<IOCompany[]> => {
+export const fetchCompanies = async (type?: CompanyType | 'all', factory_id?: string): Promise<IOCompany[]> => {
   let q = supabase.from('io_companies')
     .select('*, country:io_countries(name), state:io_states(name), city:io_cities(name)')
     .eq('is_active', true).order('company_name')
   if (type && type !== 'all') q = q.or(`company_type.eq.${type},company_type.eq.both`)
+  if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error
   return data ?? []
 }
 export const saveCompany = async (c: Partial<IOCompany>): Promise<IOCompany> => {
   const payload = {
+    factory_id: c.factory_id || null,
     company_type: c.company_type, company_name: c.company_name,
     person_name: c.person_name || null, country_id: c.country_id || null,
     state_id: c.state_id || null, city_id: c.city_id || null,
@@ -137,14 +139,17 @@ export const deleteCompany = async (id: string) => {
 }
 
 // ── Products ──────────────────────────────────────────────────
-export const fetchProducts = async (): Promise<IOProduct[]> => {
-  const { data, error } = await supabase.from('io_products')
+export const fetchProducts = async (factory_id?: string): Promise<IOProduct[]> => {
+  let q = supabase.from('io_products')
     .select('*, unit:io_units(name, abbreviation)').eq('is_active', true).order('product_name')
+  if (factory_id) q = q.eq('factory_id', factory_id)
+  const { data, error } = await q
   if (error) throw error
   return data ?? []
 }
 export const saveProduct = async (p: Partial<IOProduct>): Promise<IOProduct> => {
   const payload = {
+    factory_id: p.factory_id || null,
     product_name: p.product_name, description: p.description || null,
     hsn_code: p.hsn_code || null, unit_id: p.unit_id || null,
     rate: p.rate ?? null, is_active: true, updated_at: new Date().toISOString(),

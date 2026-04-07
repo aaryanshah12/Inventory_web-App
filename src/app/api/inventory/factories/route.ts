@@ -70,11 +70,24 @@ export async function GET(request: NextRequest) {
 }
 
 
-// POST /api/factories — Create new factory
-export async function POST(request: Request) {
+// POST /api/factories — Create new factory and auto-assign to creating owner
+export async function POST(request: NextRequest) {
   try {
-    const { name, location, materials } = await request.json()
+    const authHeader = request.headers.get('authorization')
+    const bearer = authHeader?.toLowerCase().startsWith('bearer ') ? authHeader.slice(7) : null
+    if (!bearer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearer)
+    if (authError || !authData?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = authData.user.id
+
+    const { data: ownerProfile } = await supabaseAdmin
+      .from('profiles').select('id, role').eq('id', userId).single()
+    if (!ownerProfile || ownerProfile.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { name, location, materials } = await request.json()
     if (!name) return NextResponse.json({ error: 'Factory name is required' }, { status: 400 })
 
     const { data, error } = await supabaseAdmin
@@ -84,6 +97,9 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    // Auto-assign the creating owner to this factory
+    await supabaseAdmin.from('profile_factories').insert({ profile_id: userId, factory_id: data.id })
 
     return NextResponse.json({ success: true, factory: data })
   } catch (err: any) {

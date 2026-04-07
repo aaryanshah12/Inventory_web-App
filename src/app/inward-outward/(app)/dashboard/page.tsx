@@ -1,11 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@/hooks/useAuth'
+import { useIOFactory } from '@/contexts/IOFactoryContext'
 import { fetchIOStats, fetchInwards, fetchOutwards, fetchDomestics, fmtDate } from '@/lib/io/api'
 import {
   ArrowDownToLine, ArrowUpToLine, Home, Globe, FileText,
-  TrendingUp, Building2,
 } from 'lucide-react'
 
 const BASE = '/inward-outward'
@@ -15,21 +14,12 @@ interface Stats {
 }
 
 export default function IODashboard() {
-  const { profile } = useAuth()
-  const [factoryId, setFactoryId] = useState('')
+  const { factoryId, factories } = useIOFactory()
   const [stats, setStats] = useState<Stats | null>(null)
   const [recentInwards, setRecentInwards] = useState<any[]>([])
   const [recentOutwards, setRecentOutwards] = useState<any[]>([])
   const [recentDomestics, setRecentDomestics] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  const factories = profile?.factories ?? []
-
-  useEffect(() => {
-    if (profile && factories.length > 0 && !factoryId) {
-      setFactoryId(factories[0].id)
-    }
-  }, [profile])
 
   useEffect(() => {
     load()
@@ -67,21 +57,13 @@ export default function IODashboard() {
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-primary">Dashboard</h1>
-          <p className="text-sm text-muted mt-0.5">Overview of all transactions</p>
-        </div>
-        {factories.length > 1 && (
-          <select
-            value={factoryId}
-            onChange={e => setFactoryId(e.target.value)}
-            className="input w-auto"
-          >
-            <option value="">All Factories</option>
-            {factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        )}
+      <div>
+        <h1 className="text-xl font-bold text-primary">Dashboard</h1>
+        <p className="text-sm text-muted mt-0.5">
+          {factories.length > 1
+            ? `${factories.find(f => f.id === factoryId)?.name ?? 'All Factories'} · Overview`
+            : 'Overview of all transactions'}
+        </p>
       </div>
 
       {/* KPI Cards */}

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useIOFactory } from '@/contexts/IOFactoryContext'
 import {
   fetchProducts, saveProduct, deleteProduct,
   fetchCompanies, saveCompany, deleteCompany,
@@ -49,6 +50,7 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 export default function MasterPage() {
+  const { factoryId } = useIOFactory()
   const [tab, setTab] = useState<Tab>('products')
 
   // ── Products ──────────────────────────────────────────────────────────────
@@ -101,22 +103,22 @@ export default function MasterPage() {
   const [editingLocId, setEditingLocId] = useState<number | null>(null)
   const [locForm, setLocForm]         = useState<Record<string, string>>({})
 
-  // ── Load on tab change ────────────────────────────────────────────────────
+  // ── Load on tab or factory change ────────────────────────────────────────
   useEffect(() => {
     if (tab === 'products')  loadProducts()
     if (tab === 'companies') loadCompanies()
     if (tab === 'units')     loadUnits()
     if (tab === 'locations') loadLocations()
-  }, [tab])
+  }, [tab, factoryId])
 
   async function loadProducts() {
     setProdLoading(true)
-    try { const [p, u] = await Promise.all([fetchProducts(), fetchUnits()]); setProducts(p); setUnits(u) }
+    try { const [p, u] = await Promise.all([fetchProducts(factoryId || undefined), fetchUnits()]); setProducts(p); setUnits(u) }
     catch (e) { console.error(e) } finally { setProdLoading(false) }
   }
   async function loadCompanies() {
     setCompLoading(true)
-    try { setCompanies(await fetchCompanies('all')) }
+    try { setCompanies(await fetchCompanies('all', factoryId || undefined)) }
     catch (e) { console.error(e) } finally { setCompLoading(false) }
   }
   async function loadUnits() {
@@ -188,6 +190,7 @@ export default function MasterPage() {
       if (!name) { fail++; continue }
       try {
         await saveProduct({
+          factory_id: factoryId || null,
           product_name: name,
           hsn_code: row['hsn_code'] || row['hsn'] || null,
           rate: row['rate'] ? parseFloat(row['rate']) : null,
@@ -219,6 +222,7 @@ export default function MasterPage() {
       const type: CompanyType = rawType === 'customer' ? 'customer' : rawType === 'both' ? 'both' : 'supplier'
       try {
         await saveCompany({
+          factory_id: factoryId || null,
           company_name: name,
           company_type: type,
           person_name: row['person_name'] || row['contact'] || null,
@@ -469,6 +473,7 @@ export default function MasterPage() {
       {showProductModal && (
         <ProductModal
           editing={editingProduct}
+          factoryId={factoryId || null}
           onClose={() => { setShowProductModal(false); setEditingProduct(null) }}
           onSaved={() => { setShowProductModal(false); setEditingProduct(null); loadProducts() }}
         />
@@ -476,6 +481,7 @@ export default function MasterPage() {
       {showCompanyModal && (
         <CompanyModal
           editing={editingCompany}
+          factoryId={factoryId || null}
           onClose={() => { setShowCompanyModal(false); setEditingCompany(null) }}
           onSaved={() => { setShowCompanyModal(false); setEditingCompany(null); loadCompanies() }}
         />

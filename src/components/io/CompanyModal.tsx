@@ -7,6 +7,7 @@ import { X, Save } from 'lucide-react'
 interface Props {
   editing?: IOCompany | null
   defaultType?: CompanyType
+  factoryId?: string | null
   onClose: () => void
   onSaved: (company: IOCompany) => void
 }
@@ -17,7 +18,7 @@ const TYPES: { value: CompanyType; label: string }[] = [
   { value: 'both',     label: 'Both'     },
 ]
 
-export default function CompanyModal({ editing, defaultType = 'supplier', onClose, onSaved }: Props) {
+export default function CompanyModal({ editing, defaultType = 'supplier', factoryId, onClose, onSaved }: Props) {
   const [countries, setCountries] = useState<IOCountry[]>([])
   const [states, setStates]       = useState<IOState[]>([])
   const [cities, setCities]       = useState<IOCity[]>([])
@@ -63,6 +64,7 @@ export default function CompanyModal({ editing, defaultType = 'supplier', onClos
     try {
       const saved = await saveCompany({
         id:           editing?.id,
+        factory_id:   editing ? editing.factory_id : (factoryId ?? null),
         company_name: form.company_name.trim(),
         company_type: form.company_type,
         person_name:  form.person_name  || null,

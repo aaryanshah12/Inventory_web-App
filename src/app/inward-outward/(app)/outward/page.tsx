@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useIOFactory } from '@/contexts/IOFactoryContext'
 import { fetchOutwards, saveOutward, deleteOutward, fetchCompanies, fetchProducts, fmtDate, today } from '@/lib/io/api'
 import type { IOOutward, IOLineItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
@@ -10,9 +10,7 @@ import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload } from 'lucide-
 const EMPTY_ITEM = (): IOLineItem => ({ product_id: '', quantity: 1, price: 0, remarks: '' })
 
 export default function OutwardPage() {
-  const { profile } = useAuth()
-  const factories = profile?.factories ?? []
-  const [factoryId, setFactoryId] = useState('')
+  const { factoryId, factories } = useIOFactory()
   const [rows, setRows] = useState<IOOutward[]>([])
   const [companies, setCompanies] = useState<IOCompany[]>([])
   const [products, setProducts] = useState<IOProduct[]>([])
@@ -30,13 +28,12 @@ export default function OutwardPage() {
   const [importGroups, setImportGroups] = useState<any[]>([])
   const [importing, setImporting] = useState(false)
 
-  useEffect(() => { if (profile && factories.length > 0 && !factoryId) setFactoryId(factories[0].id) }, [profile])
   useEffect(() => { loadData() }, [factoryId])
 
   async function loadData() {
     setLoading(true)
     try {
-      const [r, c, p] = await Promise.all([fetchOutwards(factoryId || undefined), fetchCompanies('supplier'), fetchProducts()])
+      const [r, c, p] = await Promise.all([fetchOutwards(factoryId || undefined), fetchCompanies('supplier', factoryId || undefined), fetchProducts(factoryId || undefined)])
       setRows(r); setCompanies(c); setProducts(p)
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }
@@ -151,7 +148,6 @@ export default function OutwardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div><h1 className="text-xl font-bold text-primary">Outward</h1><p className="text-sm text-muted mt-0.5">{filtered.length} records</p></div>
         <div className="flex items-center gap-2 flex-wrap">
-          {factories.length > 1 && <select value={factoryId} onChange={e => setFactoryId(e.target.value)} className="input"><option value="">All</option>{factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select>}
           <input ref={importRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile}/>
           <button onClick={() => importRef.current?.click()} className="btn btn-ghost"><Upload size={14}/> Import</button>
           <button onClick={handleExport} className="btn btn-ghost"><Download size={14}/> Export</button>
@@ -163,28 +159,57 @@ export default function OutwardPage() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search outward no, supplier…" className="flex-1 bg-transparent outline-none text-sm text-primary placeholder:text-muted"/>
       </div>
       <div className="card overflow-hidden">
-        <table className="data-table">
-          <thead><tr><th>Outward No</th><th>Date</th><th>Supplier</th><th>Ref No</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
-          <tbody>
-            {loading ? <tr><td colSpan={8} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
-            : filtered.length === 0 ? <tr><td colSpan={8} className="py-12 text-center text-muted text-sm">No outward records</td></tr>
-            : filtered.map(row => (
-              <tr key={row.id}>
-                <td className="font-mono font-semibold text-xs">{row.outward_number}</td>
-                <td className="text-xs">{fmtDate(row.outward_date)}</td>
-                <td>{row.supplier?.company_name ?? '—'}</td>
-                <td className="text-xs text-muted">{row.supplier_ref_no ?? '—'}</td>
-                <td className="text-xs text-muted">{row.factory?.name ?? '—'}</td>
-                <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
-                <td className="text-right"><div className="flex items-center justify-end gap-1">
-                  <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
-                  <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
-                </div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="sm:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
+          {loading ? <div className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></div>
+          : filtered.length === 0 ? <div className="py-12 text-center text-muted text-sm">No outward records</div>
+          : filtered.map(row => (
+            <div key={row.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-mono font-semibold text-xs text-inputer">{row.outward_number}</div>
+                  <div className="text-xs text-muted mt-0.5">{fmtDate(row.outward_date)}</div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => openEdit(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={14}/></button>
+                  <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
+                </div>
+              </div>
+              <div className="text-sm font-medium text-primary">{row.supplier?.company_name ?? '—'}</div>
+              <div className="flex items-center gap-3 text-xs text-muted flex-wrap">
+                {row.supplier_ref_no && <span>Ref: {row.supplier_ref_no}</span>}
+                {row.factory && <span className="text-inputer">{row.factory.name}</span>}
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-border">
+                <span className="text-xs text-muted">{row.items?.length ?? 0} items</span>
+                <span className="font-bold text-sm text-primary">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="data-table">
+            <thead><tr><th>Outward No</th><th>Date</th><th>Supplier</th><th>Ref No</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan={8} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
+              : filtered.length === 0 ? <tr><td colSpan={8} className="py-12 text-center text-muted text-sm">No outward records</td></tr>
+              : filtered.map(row => (
+                <tr key={row.id}>
+                  <td className="font-mono font-semibold text-xs">{row.outward_number}</td>
+                  <td className="text-xs">{fmtDate(row.outward_date)}</td>
+                  <td>{row.supplier?.company_name ?? '—'}</td>
+                  <td className="text-xs text-muted">{row.supplier_ref_no ?? '—'}</td>
+                  <td className="text-xs text-muted">{row.factory?.name ?? '—'}</td>
+                  <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                  <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
+                  <td className="text-right"><div className="flex items-center justify-end gap-1">
+                    <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
+                    <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                  </div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showForm && (

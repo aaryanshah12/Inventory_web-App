@@ -34,6 +34,7 @@ export interface IOCity {
 
 export interface IOCompany {
   id: string
+  factory_id?: string | null
   company_type: CompanyType
   company_name: string
   person_name?: string | null
@@ -54,6 +55,7 @@ export interface IOCompany {
 
 export interface IOProduct {
   id: string
+  factory_id?: string | null
   product_name: string
   description?: string | null
   hsn_code?: string | null

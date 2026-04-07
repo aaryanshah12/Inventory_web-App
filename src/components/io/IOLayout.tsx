@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useIOFactory } from '@/contexts/IOFactoryContext'
 import clsx from 'clsx'
 import {
   LayoutDashboard, ArrowDownToLine, ArrowUpToLine,
   Home, Globe, FileText, BookOpen,
-  LogOut, Menu, X, Sun, Moon, ChevronRight,
+  LogOut, Menu, X, Sun, Moon, ChevronRight, ChevronDown, Building2, Check,
 } from 'lucide-react'
 
 const BASE             = '/inward-outward'
@@ -29,10 +31,14 @@ const NAV = [
 export default function IOLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { profile } = useAuth()
+  const { factoryId, setFactoryId, factories } = useIOFactory()
   const [user, setUser] = useState<{ email?: string } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [themeMounted, setThemeMounted] = useState(false)
+  const [factorySwitcherOpen, setFactorySwitcherOpen] = useState(false)
+  const [topbarSwitcherOpen, setTopbarSwitcherOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -43,6 +49,7 @@ export default function IOLayout({ children }: { children: React.ReactNode }) {
       if (!remember) {
         const last = parseInt(localStorage.getItem(SESSION_KEY) ?? '0', 10)
         if (last && Date.now() - last > INACTIVITY_MS) {
+          localStorage.removeItem('io-factory-id')
           supabase.auth.signOut()
           router.replace('/inward-outward/login')
           return
@@ -68,6 +75,7 @@ export default function IOLayout({ children }: { children: React.ReactNode }) {
       if (remember) return
       const last = parseInt(localStorage.getItem(SESSION_KEY) ?? '0', 10)
       if (last && Date.now() - last > INACTIVITY_MS) {
+        localStorage.removeItem('io-factory-id')
         supabase.auth.signOut()
         router.replace('/inward-outward/login')
       }
@@ -97,6 +105,7 @@ export default function IOLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     localStorage.removeItem(SESSION_KEY)
     localStorage.removeItem(REMEMBER_KEY)
+    localStorage.removeItem('io-factory-id')
     await supabase.auth.signOut()
     router.replace('/inward-outward/login')
   }
@@ -141,6 +150,48 @@ export default function IOLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+
+      {/* Factory switcher — only if multiple factories */}
+      {factories.length > 1 && (
+        <div className="px-4 py-3 border-b border-border">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Factory</p>
+          <div className="relative">
+            <button
+              onClick={() => setFactorySwitcherOpen(v => !v)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-lg border text-sm font-medium transition-all hover:border-inputer/50"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--color-layer-sm)', color: 'var(--color-text)' }}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 size={13} style={{ color: 'var(--color-inputer)' }} />
+                <span>{factories.find(f => f.id === factoryId)?.name ?? 'Select factory'}</span>
+              </div>
+              <ChevronDown size={13} style={{ color: 'var(--color-muted)' }} />
+            </button>
+            {factorySwitcherOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setFactorySwitcherOpen(false)} />
+                <div
+                  className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border overflow-hidden shadow-xl"
+                  style={{ background: 'var(--color-panel)', borderColor: 'var(--color-border)' }}
+                >
+                  {factories.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => { setFactoryId(f.id); setFactorySwitcherOpen(false) }}
+                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm transition-all hover:bg-inputer/10"
+                    >
+                      <span style={{ color: f.id === factoryId ? 'var(--color-inputer)' : 'var(--color-text)', fontWeight: f.id === factoryId ? 600 : 400 }}>
+                        {f.name}
+                      </span>
+                      {f.id === factoryId && <Check size={13} style={{ color: 'var(--color-inputer)' }} />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
@@ -207,7 +258,44 @@ export default function IOLayout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setSidebarOpen(true)} className="text-muted hover:text-primary">
             <Menu size={20}/>
           </button>
-          <div className="text-sm font-bold text-primary">I/O Portal</div>
+          <div className="text-sm font-bold text-primary flex-1">I/O Portal</div>
+
+          {/* Mobile factory switcher */}
+          {factories.length > 1 && (
+            <div className="relative">
+              <button
+                onClick={() => setTopbarSwitcherOpen(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all hover:border-inputer/50"
+                style={{ borderColor: 'var(--color-inputer)', background: 'color-mix(in srgb, var(--color-inputer) 12%, transparent)', color: 'var(--color-inputer)' }}
+              >
+                <Building2 size={11} />
+                <span>{factories.find(f => f.id === factoryId)?.name ?? 'Factory'}</span>
+                <ChevronDown size={10} />
+              </button>
+              {topbarSwitcherOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setTopbarSwitcherOpen(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-1 w-48 z-50 rounded-xl border overflow-hidden shadow-xl"
+                    style={{ background: 'var(--color-panel)', borderColor: 'var(--color-border)' }}
+                  >
+                    {factories.map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => { setFactoryId(f.id); setTopbarSwitcherOpen(false) }}
+                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm transition-all hover:bg-inputer/10"
+                      >
+                        <span style={{ color: f.id === factoryId ? 'var(--color-inputer)' : 'var(--color-text)', fontWeight: f.id === factoryId ? 600 : 400 }}>
+                          {f.name}
+                        </span>
+                        {f.id === factoryId && <Check size={13} style={{ color: 'var(--color-inputer)' }} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <main className="flex-1 overflow-y-auto">
