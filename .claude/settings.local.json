@@ -30,7 +30,8 @@
       "Bash(cp \"C:\\\\Users\\\\Aryan\\\\Desktop\\\\Factories\\\\nisarg.jpeg\" \"C:\\\\Users\\\\Aryan\\\\Desktop\\\\Inventory_web-App\\\\public\\\\nisarg.jpeg\")",
       "Bash(cp \"C:\\\\Users\\\\Aryan\\\\Desktop\\\\Factories\\\\vishnu.jpg\" \"C:\\\\Users\\\\Aryan\\\\Desktop\\\\Inventory_web-App\\\\public\\\\vishnu.jpg\")",
       "Bash(ls \"C:\\\\Users\\\\Aryan\\\\Desktop\\\\Factories\\\\\"*.png 2>/dev/null; ls \"C:\\\\Users\\\\Aryan\\\\Downloads\\\\\"*nisarg*)",
-      "Read(//c/Users/Aryan/Desktop/**)"
+      "Read(//c/Users/Aryan/Desktop/**)",
+      "Bash(npm install:*)"
     ]
   }
 }
