@@ -153,7 +153,10 @@ export default function DomesticPage() {
     URL.revokeObjectURL(url)
   }
 
-  const filtered = rows.filter(r => r.invoice_number.toLowerCase().includes(search.toLowerCase()) || (r.customer?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
+  const filtered = rows.filter(r => 
+  (r.tax_invoice_number ?? '').toLowerCase().includes(search.toLowerCase()) || 
+  (r.customer?.company_name ?? '').toLowerCase().includes(search.toLowerCase())
+)
   const rowTotal = (its: IOLineItem[]) => its.reduce((s, it) => s + it.price * it.quantity, 0)
 
   return (
@@ -179,7 +182,7 @@ export default function DomesticPage() {
             <div key={row.id} className="p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-mono font-semibold text-xs text-inputer">{row.invoice_number}</div>
+                  <div className="font-mono font-semibold text-xs text-inputer">{row.tax_invoice_number || '—'}</div>
                   <div className="text-xs text-muted mt-0.5">{fmtDate(row.invoice_date)}</div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -199,13 +202,13 @@ export default function DomesticPage() {
         </div>
         <div className="hidden sm:block overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
+            <thead><tr><th>Tax Invoice No</th><th>Date</th><th>Customer</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
               : filtered.length === 0 ? <tr><td colSpan={7} className="py-12 text-center text-muted text-sm">No domestic invoices</td></tr>
               : filtered.map(row => (
                 <tr key={row.id}>
-                  <td className="font-mono font-semibold text-xs">{row.invoice_number}</td>
+                  <td className="font-mono font-semibold text-xs">{row.tax_invoice_number || '—'}</td>
                   <td className="text-xs">{fmtDate(row.invoice_date)}</td>
                   <td>{row.customer?.company_name ?? '—'}</td>
                   <td className="text-xs text-muted">{row.factory?.name ?? '—'}</td>
