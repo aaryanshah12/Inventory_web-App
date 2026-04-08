@@ -111,6 +111,7 @@ export interface IODomestic {
   id: string
   factory_id?: string | null
   invoice_number: string
+  tax_invoice_number?: string | null
   invoice_date: string
   customer_id?: string | null
   remarks?: string | null
@@ -125,6 +126,7 @@ export interface IOInternational {
   id: string
   factory_id?: string | null
   invoice_number: string
+  tax_invoice_number?: string | null
   invoice_date: string
   customer_id?: string | null
   remarks?: string | null
@@ -152,6 +154,7 @@ export interface IOQuotation {
   quotation_number: string
   quotation_date: string
   customer_id?: string | null
+  outward_ref_no?: string | null
   header_content?: string | null
   footer_content?: string | null
   created_at?: string

@@ -14,10 +14,67 @@ async function userId() {
 }
 
 // ── Next Document Number ───────────────────────────────────────
-export async function getNextNumber(type: DocType): Promise<string> {
-  const { data, error } = await supabase.rpc('io_next_number', { p_doc_type: type })
+const DOC_TABLE: Record<DocType, { table: string; column: string }> = {
+  inward:        { table: 'io_inward',        column: 'inward_number' },
+  outward:       { table: 'io_outward',       column: 'outward_number' },
+  quotation:     { table: 'io_quotations',    column: 'quotation_number' },
+  domestic:      { table: 'io_domestic',      column: 'invoice_number' },
+  international: { table: 'io_international', column: 'invoice_number' },
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function makeVHNumber(seq: number, date: Date) {
+  const mm = pad2(date.getMonth() + 1)
+  const yy = pad2(date.getFullYear() % 100)
+  return `VH ${seq}/${mm}/${yy}`
+}
+
+function parseVHNumber(v: unknown): { seq: number; yy: string } | null {
+  if (typeof v !== 'string') return null
+  // Accept both `VH1/04/26` and `VH 1/04/26`
+  const m = v.trim().match(/^VH\s*(\d+)\/(\d{2})\/(\d{2})$/i)
+  if (!m) return null
+  return { seq: parseInt(m[1], 10) || 0, yy: m[3] }
+}
+
+async function computeNextNumber(type: DocType, date = new Date()): Promise<string> {
+  const { table, column } = DOC_TABLE[type]
+  const yy = pad2(date.getFullYear() % 100)
+
+  // Pull a small slice of recent numbers and compute max for this year.
+  // This keeps the logic in-app, even if the Supabase RPC isn't updated.
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .order('created_at', { ascending: false })
+    .limit(2000)
   if (error) throw error
-  return data as string
+
+  let max = 0
+  for (const row of (data ?? []) as any[]) {
+    const parsed = parseVHNumber(row?.[column])
+    if (!parsed) continue
+    if (parsed.yy !== yy) continue
+    if (parsed.seq > max) max = parsed.seq
+  }
+
+  return makeVHNumber(max + 1, date)
+}
+
+export async function getNextNumber(type: DocType, date?: string): Promise<string> {
+  // Prefer the legacy RPC if it already returns the desired format;
+  // otherwise fall back to local computation.
+  try {
+    const { data, error } = await supabase.rpc('io_next_number', { p_doc_type: type })
+    if (!error && typeof data === 'string' && parseVHNumber(data)) return data
+  } catch {
+    // ignore and fallback
+  }
+  const d = date ? new Date(date) : new Date()
+  return computeNextNumber(type, d)
 }
 
 // ── Units ──────────────────────────────────────────────────────
@@ -60,6 +117,26 @@ export const deleteCountry = async (id: number) => {
   if (error) throw error
 }
 
+export const ensureCountry = async (name: string, code?: string | null): Promise<IOCountry> => {
+  const n = (name ?? '').trim()
+  if (!n) throw new Error('country name required')
+  const { data: existing, error: se } = await supabase
+    .from('io_countries')
+    .select('*')
+    .ilike('name', n)
+    .limit(1)
+  if (se) throw se
+  if (existing?.[0]) return existing[0] as any
+
+  const { data, error } = await supabase
+    .from('io_countries')
+    .insert({ name: n, code: (code ?? null) })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as any
+}
+
 // ── States ────────────────────────────────────────────────────
 export const fetchStates = async (country_id?: number): Promise<IOState[]> => {
   let q = supabase.from('io_states').select('*, country:io_countries(name)').order('name')
@@ -82,6 +159,27 @@ export const deleteState = async (id: number) => {
   if (error) throw error
 }
 
+export const ensureState = async (name: string, country_id: number, code?: string | null): Promise<IOState> => {
+  const n = (name ?? '').trim()
+  if (!n) throw new Error('state name required')
+  const { data: existing, error: se } = await supabase
+    .from('io_states')
+    .select('*')
+    .eq('country_id', country_id)
+    .ilike('name', n)
+    .limit(1)
+  if (se) throw se
+  if (existing?.[0]) return existing[0] as any
+
+  const { data, error } = await supabase
+    .from('io_states')
+    .insert({ name: n, country_id, code: (code ?? null) })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as any
+}
+
 // ── Cities ────────────────────────────────────────────────────
 export const fetchCities = async (state_id?: number): Promise<IOCity[]> => {
   let q = supabase.from('io_cities').select('*, state:io_states(name)').order('name')
@@ -102,6 +200,27 @@ export const saveCity = async (c: Partial<IOCity>) => {
 export const deleteCity = async (id: number) => {
   const { error } = await supabase.from('io_cities').delete().eq('id', id)
   if (error) throw error
+}
+
+export const ensureCity = async (name: string, state_id: number): Promise<IOCity> => {
+  const n = (name ?? '').trim()
+  if (!n) throw new Error('city name required')
+  const { data: existing, error: se } = await supabase
+    .from('io_cities')
+    .select('*')
+    .eq('state_id', state_id)
+    .ilike('name', n)
+    .limit(1)
+  if (se) throw se
+  if (existing?.[0]) return existing[0] as any
+
+  const { data, error } = await supabase
+    .from('io_cities')
+    .insert({ name: n, state_id })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as any
 }
 
 // ── Companies ─────────────────────────────────────────────────
@@ -176,14 +295,14 @@ export const fetchInwards = async (factory_id?: string): Promise<IOInward[]> => 
   const { data, error } = await q
   if (error) throw error; return data ?? []
 }
-export const saveInward = async (inward: Partial<IOInward> & { items: IOLineItem[] }): Promise<void> => {
+export const saveInward = async (inward: Partial<IOInward> & { items: IOLineItem[] }): Promise<IOInward> => {
   const uid = await userId()
   if (inward.id) {
-    const { error } = await supabase.from('io_inward').update({
+    const { data, error } = await supabase.from('io_inward').update({
       factory_id: inward.factory_id || null, inward_date: inward.inward_date,
       supplier_id: inward.supplier_id || null, supplier_ref_no: inward.supplier_ref_no || null,
       remarks: inward.remarks || null, updated_at: new Date().toISOString(),
-    }).eq('id', inward.id)
+    }).eq('id', inward.id).select().single()
     if (error) throw error
     await supabase.from('io_inward_items').delete().eq('inward_id', inward.id)
     if (inward.items.length > 0) {
@@ -192,8 +311,9 @@ export const saveInward = async (inward: Partial<IOInward> & { items: IOLineItem
       )
       if (ie) throw ie
     }
+    return data as any
   } else {
-    const number = await getNextNumber('inward')
+    const number = await getNextNumber('inward', inward.inward_date)
     const { data, error } = await supabase.from('io_inward').insert({
       inward_number: number, factory_id: inward.factory_id || null,
       inward_date: inward.inward_date, supplier_id: inward.supplier_id || null,
@@ -206,6 +326,7 @@ export const saveInward = async (inward: Partial<IOInward> & { items: IOLineItem
       )
       if (ie) throw ie
     }
+    return data as any
   }
 }
 export const deleteInward = async (id: string) => {
@@ -222,14 +343,42 @@ export const fetchOutwards = async (factory_id?: string): Promise<IOOutward[]> =
   const { data, error } = await q
   if (error) throw error; return data ?? []
 }
-export const saveOutward = async (outward: Partial<IOOutward> & { items: IOLineItem[] }): Promise<void> => {
+
+export const fetchOutwardByRefNo = async (refNo: string, factory_id?: string): Promise<IOOutward | null> => {
+  const ref = (refNo ?? '').trim()
+  if (!ref) return null
+  let q = supabase.from('io_outward')
+    .select('*, factory:factories(id,name), supplier:io_companies(id,company_name,person_name), items:io_outward_items(*, product:io_products(product_name,hsn_code))')
+    .or(`supplier_ref_no.eq.${ref},outward_number.eq.${ref}`)
+    .order('outward_date', { ascending: false })
+    .limit(1)
+  if (factory_id) q = q.eq('factory_id', factory_id)
+  const { data, error } = await q
+  if (error) throw error
+  return (data?.[0] as any) ?? null
+}
+
+export const searchOutwards = async (query: string, factory_id?: string) => {
+  const q = (query ?? '').trim()
+  if (!q) return []
+  let s = supabase.from('io_outward')
+    .select('id, outward_number, outward_date, supplier_ref_no, supplier:io_companies(id,company_name)')
+    .order('outward_date', { ascending: false })
+    .limit(25)
+    .or(`outward_number.ilike.%${q}%,supplier_ref_no.ilike.%${q}%`)
+  if (factory_id) s = s.eq('factory_id', factory_id)
+  const { data, error } = await s
+  if (error) throw error
+  return data ?? []
+}
+export const saveOutward = async (outward: Partial<IOOutward> & { items: IOLineItem[] }): Promise<IOOutward> => {
   const uid = await userId()
   if (outward.id) {
-    const { error } = await supabase.from('io_outward').update({
+    const { data, error } = await supabase.from('io_outward').update({
       factory_id: outward.factory_id || null, outward_date: outward.outward_date,
       supplier_id: outward.supplier_id || null, supplier_ref_no: outward.supplier_ref_no || null,
       remarks: outward.remarks || null, updated_at: new Date().toISOString(),
-    }).eq('id', outward.id)
+    }).eq('id', outward.id).select().single()
     if (error) throw error
     await supabase.from('io_outward_items').delete().eq('outward_id', outward.id)
     if (outward.items.length > 0) {
@@ -238,8 +387,9 @@ export const saveOutward = async (outward: Partial<IOOutward> & { items: IOLineI
       )
       if (ie) throw ie
     }
+    return data as any
   } else {
-    const number = await getNextNumber('outward')
+    const number = await getNextNumber('outward', outward.outward_date)
     const { data, error } = await supabase.from('io_outward').insert({
       outward_number: number, factory_id: outward.factory_id || null,
       outward_date: outward.outward_date, supplier_id: outward.supplier_id || null,
@@ -252,6 +402,7 @@ export const saveOutward = async (outward: Partial<IOOutward> & { items: IOLineI
       )
       if (ie) throw ie
     }
+    return data as any
   }
 }
 export const deleteOutward = async (id: string) => {
@@ -268,13 +419,14 @@ export const fetchDomestics = async (factory_id?: string): Promise<IODomestic[]>
   const { data, error } = await q
   if (error) throw error; return data ?? []
 }
-export const saveDomestic = async (doc: Partial<IODomestic> & { items: IOLineItem[] }): Promise<void> => {
+export const saveDomestic = async (doc: Partial<IODomestic> & { items: IOLineItem[] }): Promise<IODomestic> => {
   const uid = await userId()
   if (doc.id) {
-    const { error } = await supabase.from('io_domestic').update({
+    const { data, error } = await supabase.from('io_domestic').update({
       factory_id: doc.factory_id || null, invoice_date: doc.invoice_date,
-      customer_id: doc.customer_id || null, remarks: doc.remarks || null, updated_at: new Date().toISOString(),
-    }).eq('id', doc.id)
+      customer_id: doc.customer_id || null, tax_invoice_number: doc.tax_invoice_number || null,
+      remarks: doc.remarks || null, updated_at: new Date().toISOString(),
+    }).eq('id', doc.id).select().single()
     if (error) throw error
     await supabase.from('io_domestic_items').delete().eq('domestic_id', doc.id)
     if (doc.items.length > 0) {
@@ -283,11 +435,13 @@ export const saveDomestic = async (doc: Partial<IODomestic> & { items: IOLineIte
       )
       if (ie) throw ie
     }
+    return data as any
   } else {
-    const number = await getNextNumber('domestic')
+    const number = await getNextNumber('domestic', doc.invoice_date)
     const { data, error } = await supabase.from('io_domestic').insert({
       invoice_number: number, factory_id: doc.factory_id || null,
       invoice_date: doc.invoice_date, customer_id: doc.customer_id || null,
+      tax_invoice_number: doc.tax_invoice_number || null,
       remarks: doc.remarks || null, created_by: uid,
     }).select().single()
     if (error) throw error
@@ -297,6 +451,7 @@ export const saveDomestic = async (doc: Partial<IODomestic> & { items: IOLineIte
       )
       if (ie) throw ie
     }
+    return data as any
   }
 }
 export const deleteDomestic = async (id: string) => {
@@ -313,13 +468,14 @@ export const fetchInternationals = async (factory_id?: string): Promise<IOIntern
   const { data, error } = await q
   if (error) throw error; return data ?? []
 }
-export const saveInternational = async (doc: Partial<IOInternational> & { items: IOLineItem[] }): Promise<void> => {
+export const saveInternational = async (doc: Partial<IOInternational> & { items: IOLineItem[] }): Promise<IOInternational> => {
   const uid = await userId()
   if (doc.id) {
-    const { error } = await supabase.from('io_international').update({
+    const { data, error } = await supabase.from('io_international').update({
       factory_id: doc.factory_id || null, invoice_date: doc.invoice_date,
-      customer_id: doc.customer_id || null, remarks: doc.remarks || null, updated_at: new Date().toISOString(),
-    }).eq('id', doc.id)
+      customer_id: doc.customer_id || null, tax_invoice_number: doc.tax_invoice_number || null,
+      remarks: doc.remarks || null, updated_at: new Date().toISOString(),
+    }).eq('id', doc.id).select().single()
     if (error) throw error
     await supabase.from('io_international_items').delete().eq('international_id', doc.id)
     if (doc.items.length > 0) {
@@ -328,11 +484,13 @@ export const saveInternational = async (doc: Partial<IOInternational> & { items:
       )
       if (ie) throw ie
     }
+    return data as any
   } else {
-    const number = await getNextNumber('international')
+    const number = await getNextNumber('international', doc.invoice_date)
     const { data, error } = await supabase.from('io_international').insert({
       invoice_number: number, factory_id: doc.factory_id || null,
       invoice_date: doc.invoice_date, customer_id: doc.customer_id || null,
+      tax_invoice_number: doc.tax_invoice_number || null,
       remarks: doc.remarks || null, created_by: uid,
     }).select().single()
     if (error) throw error
@@ -342,6 +500,7 @@ export const saveInternational = async (doc: Partial<IOInternational> & { items:
       )
       if (ie) throw ie
     }
+    return data as any
   }
 }
 export const deleteInternational = async (id: string) => {
@@ -358,14 +517,15 @@ export const fetchQuotations = async (factory_id?: string): Promise<IOQuotation[
   const { data, error } = await q
   if (error) throw error; return data ?? []
 }
-export const saveQuotation = async (doc: Partial<IOQuotation> & { items: IOQuotationItem[] }): Promise<void> => {
+export const saveQuotation = async (doc: Partial<IOQuotation> & { items: IOQuotationItem[] }): Promise<IOQuotation> => {
   const uid = await userId()
   if (doc.id) {
-    const { error } = await supabase.from('io_quotations').update({
+    const { data, error } = await supabase.from('io_quotations').update({
       factory_id: doc.factory_id || null, quotation_date: doc.quotation_date,
-      customer_id: doc.customer_id || null, header_content: doc.header_content || null,
+      customer_id: doc.customer_id || null, outward_ref_no: doc.outward_ref_no || null,
+      header_content: doc.header_content || null,
       footer_content: doc.footer_content || null, updated_at: new Date().toISOString(),
-    }).eq('id', doc.id)
+    }).eq('id', doc.id).select().single()
     if (error) throw error
     await supabase.from('io_quotation_items').delete().eq('quotation_id', doc.id)
     if (doc.items.length > 0) {
@@ -374,11 +534,13 @@ export const saveQuotation = async (doc: Partial<IOQuotation> & { items: IOQuota
       )
       if (ie) throw ie
     }
+    return data as any
   } else {
-    const number = await getNextNumber('quotation')
+    const number = await getNextNumber('quotation', doc.quotation_date)
     const { data, error } = await supabase.from('io_quotations').insert({
       quotation_number: number, factory_id: doc.factory_id || null,
       quotation_date: doc.quotation_date, customer_id: doc.customer_id || null,
+      outward_ref_no: doc.outward_ref_no || null,
       header_content: doc.header_content || null, footer_content: doc.footer_content || null, created_by: uid,
     }).select().single()
     if (error) throw error
@@ -388,6 +550,7 @@ export const saveQuotation = async (doc: Partial<IOQuotation> & { items: IOQuota
       )
       if (ie) throw ie
     }
+    return data as any
   }
 }
 export const deleteQuotation = async (id: string) => {

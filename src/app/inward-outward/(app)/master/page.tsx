@@ -27,7 +27,6 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: 'products',   label: 'Products',   icon: Package   },
   { key: 'companies',  label: 'Companies',  icon: Building2 },
   { key: 'units',      label: 'Units',      icon: Ruler     },
-  { key: 'locations',  label: 'Locations',  icon: MapPin    },
 ]
 
 const COMPANY_TYPES: { value: CompanyType; label: string }[] = [

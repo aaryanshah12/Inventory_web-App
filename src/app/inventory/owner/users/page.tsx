@@ -235,6 +235,7 @@ export default function OwnerUsersPage() {
                     value={newUser.role}
                     onChange={e => setNewUser({ ...newUser, role: e.target.value })}
                   >
+                    <option value="owner">Owner</option>
                     <option value="inputer">Inputer</option>
                     <option value="chemist">Chemist</option>
                   </select>

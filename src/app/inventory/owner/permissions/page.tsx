@@ -135,6 +135,7 @@ export default function PermissionsPage() {
               <div>
                 <label className="block font-mono text-xs text-muted uppercase tracking-widest mb-1.5">Role</label>
                 <select className="input-field owner-focus" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
+                  <option value="owner">Owner</option>
                   <option value="inputer">Inputer</option>
                   <option value="chemist">Chemist</option>
                 </select>

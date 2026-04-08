@@ -1,12 +1,13 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useIOFactory } from '@/contexts/IOFactoryContext'
-import { fetchQuotations, saveQuotation, deleteQuotation, fetchCompanies, fetchProducts, fmtDate, today } from '@/lib/io/api'
+import { fetchQuotations, saveQuotation, deleteQuotation, fetchCompanies, fetchProducts, fetchOutwardByRefNo, searchOutwards, fmtDate, today } from '@/lib/io/api'
 import type { IOQuotation, IOQuotationItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
 import RichTextEditor from '@/components/io/RichTextEditor'
-import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload, Printer } from 'lucide-react'
+import { printLetterHeadQuotation } from '@/lib/io/print'
 
 const EMPTY_ITEM = (): IOQuotationItem => ({ reference_no: '', product_id: '', product_name_override: '', price: 0 })
 
@@ -37,6 +38,10 @@ export default function QuotationPage() {
   const [items, setItems] = useState<IOQuotationItem[]>([EMPTY_ITEM()])
   const [showProductModal, setShowProductModal] = useState(false)
   const [showCompanyModal, setShowCompanyModal] = useState(false)
+  const [outwardMatches, setOutwardMatches] = useState<any[]>([])
+  const [outwardSearching, setOutwardSearching] = useState(false)
+  const [activeOutwardRow, setActiveOutwardRow] = useState<number | null>(null)
+  const [activeOutwardQuery, setActiveOutwardQuery] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [importGroups, setImportGroups] = useState<any[]>([])
@@ -67,14 +72,38 @@ export default function QuotationPage() {
     })
     setItems(row.items?.length ? row.items.map(it => ({ ...it })) : [EMPTY_ITEM()]); setShowForm(true)
   }
-  async function handleSave() {
-    const validItems = items.filter(it => it.price > 0)
+  async function handleSave(doPrint = false) {
+    const validItems = items.filter(it => it.price > 0 && (it.product_id || it.product_name_override))
     if (!validItems.length) { alert('Add at least one item with a price.'); return }
     setSaving(true)
     try {
-      await saveQuotation({ id: editing?.id, quotation_date: form.quotation_date, customer_id: form.customer_id || null, factory_id: form.factory_id || factoryId || null, header_content: form.header_content || null, footer_content: form.footer_content || null, items: validItems })
-      setShowForm(false); loadData()
+      const saved = await saveQuotation({
+        id: editing?.id,
+        quotation_date: form.quotation_date,
+        customer_id: form.customer_id || null,
+        factory_id: form.factory_id || factoryId || null,
+        // backward-compatible: keep outward_ref_no as a comma-separated summary for reporting
+        outward_ref_no: Array.from(new Set(validItems.map(it => (it.reference_no ?? '').trim()).filter(Boolean))).join(', ') || null,
+        header_content: form.header_content || null,
+        footer_content: form.footer_content || null,
+        items: validItems,
+      })
+      setShowForm(false)
+      const next = await fetchQuotations(factoryId || undefined)
+      setRows(next)
+      if (doPrint) {
+        const full = next.find(r => r.id === saved.id) ?? (editing ?? null)
+        if (full) await printLetterHeadQuotation(full, products)
+      }
     } catch (e: any) { alert(e.message) } finally { setSaving(false) }
+  }
+
+  async function handlePrint(row: IOQuotation) {
+    try {
+      await printLetterHeadQuotation(row, products)
+    } catch (e: any) {
+      alert(e.message)
+    }
   }
   async function handleDelete(id: string) { if (!confirm('Delete?')) return; await deleteQuotation(id); loadData() }
   function setItem(i: number, field: keyof IOQuotationItem, value: any) { setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it)) }
@@ -118,8 +147,9 @@ export default function QuotationPage() {
       if (!map[key]) {
         const errors: string[] = []
         if (!company) errors.push(`Customer "${customerName}" not found`)
-        if (!factory && factories.length > 1) errors.push(`Factory "${factoryName}" not found`)
-        map[key] = { quotation_date: date, customer_id: company?.id ?? '', customer_name: company?.company_name ?? customerName, factory_id: factory?.id ?? factoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
+        const chosenFactoryId = factory?.id ?? factoryId
+        if (!chosenFactoryId && factories.length > 1 && factoryName) errors.push(`Factory "${factoryName}" not found`)
+        map[key] = { quotation_date: date, customer_id: company?.id ?? '', customer_name: company?.company_name ?? customerName, factory_id: chosenFactoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
       }
       map[key].items.push({ reference_no: refNo ?? '', product_id: product?.id ?? '', product_name: product?.product_name ?? productName, product_name_override: product ? '' : (productName ?? ''), price: parseFloat(priceStr) || 0, error: (!product && !productName) ? 'Missing product' : '' })
     }
@@ -164,6 +194,72 @@ export default function QuotationPage() {
   const filtered = rows.filter(r => r.quotation_number.toLowerCase().includes(search.toLowerCase()) || (r.customer?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
   const rowTotal = (its: IOQuotationItem[]) => its.reduce((s, it) => s + it.price, 0)
 
+  async function applyOutwardRefForRow(rowIdx: number, ref: string) {
+    const v = (ref ?? '').trim()
+    if (!v) return
+    try {
+      const out = await fetchOutwardByRefNo(v, form.factory_id || factoryId || undefined)
+      if (!out) return
+      const outNo = (out.outward_number ?? v).trim()
+
+      // Prevent selecting the same outward twice in a quotation
+      const alreadyUsed = items.some((it, idx) => idx !== rowIdx && (it.reference_no ?? '').trim() === outNo)
+      if (alreadyUsed) {
+        alert(`Outward ${outNo} is already added in this quotation.`)
+        return
+      }
+
+      const mapped: IOQuotationItem[] = (out.items ?? [])
+        .filter((it: any) => it.product_id)
+        .map((it: any) => ({
+          reference_no: outNo,
+          product_id: it.product_id,
+          // Store product name for display even if product list isn't loaded yet
+          product_name_override: it.product?.product_name ?? '',
+          price: Number(it.price) || 0,
+        }))
+      if (mapped.length) {
+        setItems(prev => {
+          const next = [...prev]
+          // replace current row with first item
+          next[rowIdx] = { ...next[rowIdx], ...mapped[0] }
+          // insert remaining items after
+          if (mapped.length > 1) next.splice(rowIdx + 1, 0, ...mapped.slice(1))
+          return next
+        })
+      }
+      if (!form.customer_id && out.supplier_id) setForm(f => ({ ...f, customer_id: String(out.supplier_id) }))
+
+      // Close suggestions after successful selection
+      setActiveOutwardRow(null)
+      setActiveOutwardQuery('')
+      setOutwardMatches([])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    const q = (activeOutwardQuery ?? '').trim()
+    if (!q) { setOutwardMatches([]); return }
+    const t = window.setTimeout(async () => {
+      setOutwardSearching(true)
+      try {
+        const res = await searchOutwards(q, form.factory_id || factoryId || undefined)
+        // Hide outwards already added (except for the currently edited row value)
+        const used = new Set(items.map(it => (it.reference_no ?? '').trim()).filter(Boolean))
+        const current = activeOutwardRow != null ? (items[activeOutwardRow]?.reference_no ?? '').trim() : ''
+        if (current) used.delete(current)
+        setOutwardMatches((res ?? []).filter((o: any) => !used.has((o.outward_number ?? '').trim())))
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setOutwardSearching(false)
+      }
+    }, 250)
+    return () => window.clearTimeout(t)
+  }, [activeOutwardQuery, activeOutwardRow, items, form.factory_id, factoryId])
+
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -193,6 +289,7 @@ export default function QuotationPage() {
                   <div className="text-xs text-muted mt-0.5">{fmtDate(row.quotation_date)}</div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => handlePrint(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={14}/></button>
                   <button onClick={() => openEdit(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={14}/></button>
                   <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                 </div>
@@ -221,6 +318,7 @@ export default function QuotationPage() {
                   <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                   <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
                   <td className="text-right"><div className="flex items-center justify-end gap-1">
+                    <button onClick={() => handlePrint(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={13}/></button>
                     <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
                     <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                   </div></td>
@@ -286,14 +384,20 @@ export default function QuotationPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-primary">Items</h3>
-                  <button onClick={() => setItems(p => [...p, EMPTY_ITEM()])} className="text-xs text-inputer hover:underline flex items-center gap-1"><Plus size={12}/> Add Row</button>
+                  <button
+                    onClick={() => setItems(p => [...p, EMPTY_ITEM()])}
+                    className="text-xs text-inputer hover:underline flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Add Row"
+                  >
+                    <Plus size={12}/> Add Row
+                  </button>
                 </div>
-                <div className="border border-border rounded-xl overflow-hidden">
+                <div className="border border-border rounded-xl overflow-visible">
                   <table className="w-full text-xs">
                     <thead style={{ background: 'var(--color-surface)' }}>
                       <tr className="border-b border-border">
-                        <th className="text-left px-3 py-2 font-semibold text-muted">Ref No</th>
-                        <th className="text-left px-3 py-2 font-semibold text-muted">Product / Name</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted">Outward Ref No</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted">Product</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted">Price</th>
                         <th className="px-2"/>
                       </tr>
@@ -302,17 +406,58 @@ export default function QuotationPage() {
                       {items.map((it, i) => (
                         <tr key={i} className="border-b border-border last:border-0">
                           <td className="px-2 py-2">
-                            <input value={it.reference_no ?? ''} onChange={e => setItem(i, 'reference_no', e.target.value)} placeholder="Ref" className="input w-24 py-1.5 text-xs"/>
+                            <div className="relative">
+                              <input
+                                value={it.reference_no ?? ''}
+                                onFocus={() => { setActiveOutwardRow(i); setActiveOutwardQuery(it.reference_no ?? '') }}
+                                onChange={e => { setItem(i, 'reference_no', e.target.value); setActiveOutwardRow(i); setActiveOutwardQuery(e.target.value) }}
+                                onBlur={e => { applyOutwardRefForRow(i, e.target.value); window.setTimeout(() => setActiveOutwardRow(null), 120) }}
+                                placeholder="Type & select…"
+                                className="input w-40 py-1.5 text-xs"
+                              />
+                              {/* Show dropdown for the focused row */}
+                              {activeOutwardRow === i && (outwardSearching || outwardMatches.length > 0) && (
+                                <div className="absolute z-[90] mt-2 w-[360px] max-w-[70vw] border border-border rounded-xl overflow-hidden shadow-lg"
+                                  style={{ background: 'var(--color-panel)' }}>
+                                  {outwardSearching && (
+                                    <div className="px-3 py-2 text-xs text-muted">Searching outwards…</div>
+                                  )}
+                                  {!outwardSearching && outwardMatches.length > 0 && (
+                                    <div className="max-h-[260px] overflow-y-auto">
+                                      {outwardMatches.map((o: any) => (
+                                        <button
+                                          key={o.id}
+                                          type="button"
+                                          onMouseDown={e => {
+                                            e.preventDefault()
+                                            setItem(i, 'reference_no', o.outward_number)
+                                            setActiveOutwardRow(i)
+                                            setActiveOutwardQuery(o.outward_number)
+                                            applyOutwardRefForRow(i, o.outward_number)
+                                          }}
+                                          className="w-full text-left px-3 py-2 hover:bg-layer-sm transition-colors border-b border-border last:border-b-0"
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="font-mono text-xs font-semibold text-inputer">{o.outward_number}</div>
+                                            <div className="text-[11px] text-muted">{o.outward_date}</div>
+                                          </div>
+                                          <div className="text-xs text-primary mt-0.5">{o.supplier?.company_name ?? '—'}</div>
+                                          {o.supplier_ref_no && <div className="text-[11px] text-muted mt-0.5">Ref: {o.supplier_ref_no}</div>}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-2 py-2 min-w-[200px]">
-                            <div className="flex gap-1 mb-1">
-                              <select value={it.product_id ?? ''} onChange={e => setItem(i, 'product_id', e.target.value)} className="input flex-1 text-xs py-1.5">
-                                <option value="">— Product —</option>
-                                {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-                              </select>
-                              <button onClick={() => setShowProductModal(true)} className="btn btn-inputer px-2 py-1.5 text-xs">+</button>
-                            </div>
-                            <input value={it.product_name_override ?? ''} onChange={e => setItem(i, 'product_name_override', e.target.value)} placeholder="Or type a custom name" className="input w-full py-1.5 text-xs"/>
+                            <input
+                              value={products.find(p => p.id === it.product_id)?.product_name ?? it.product_name_override ?? ''}
+                              readOnly
+                              placeholder={it.reference_no ? 'Product (from outward)' : 'Select outward first'}
+                              className="input w-full py-1.5 text-xs opacity-80"
+                            />
                           </td>
                           <td className="px-2 py-2">
                             <input type="number" min={0} value={it.price || ''} placeholder="0" onChange={e => setItem(i, 'price', parseFloat(e.target.value) || 0)} className="input w-28 text-right py-1.5 text-xs"/>
@@ -353,7 +498,11 @@ export default function QuotationPage() {
 
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
               <button onClick={() => setShowForm(false)} className="btn btn-ghost">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-inputer">
+              <button onClick={() => handleSave(true)} disabled={saving} className="btn btn-ghost">
+                {saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Printer size={14}/>}
+                {editing ? 'Update & Print' : 'Save & Print'}
+              </button>
+              <button onClick={() => handleSave(false)} disabled={saving} className="btn btn-inputer">
                 {saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Save size={14}/>}
                 {editing ? 'Update' : 'Save'}
               </button>

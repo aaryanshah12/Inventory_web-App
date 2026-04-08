@@ -5,7 +5,8 @@ import { fetchOutwards, saveOutward, deleteOutward, fetchCompanies, fetchProduct
 import type { IOOutward, IOLineItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
-import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload, Printer } from 'lucide-react'
+import { printLabelForOutward } from '@/lib/io/print'
 
 const EMPTY_ITEM = (): IOLineItem => ({ product_id: '', quantity: 1, price: 0, remarks: '' })
 
@@ -33,7 +34,7 @@ export default function OutwardPage() {
   async function loadData() {
     setLoading(true)
     try {
-      const [r, c, p] = await Promise.all([fetchOutwards(factoryId || undefined), fetchCompanies('supplier', factoryId || undefined), fetchProducts(factoryId || undefined)])
+      const [r, c, p] = await Promise.all([fetchOutwards(factoryId || undefined), fetchCompanies('customer', factoryId || undefined), fetchProducts(factoryId || undefined)])
       setRows(r); setCompanies(c); setProducts(p)
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }
@@ -46,20 +47,34 @@ export default function OutwardPage() {
     setEditing(row); setForm({ outward_date: row.outward_date, supplier_id: row.supplier_id ?? '', supplier_ref_no: row.supplier_ref_no ?? '', remarks: row.remarks ?? '', factory_id: row.factory_id ?? factoryId })
     setItems(row.items?.length ? row.items.map(it => ({ ...it })) : [EMPTY_ITEM()]); setShowForm(true)
   }
-  async function handleSave() {
+  async function handleSave(doPrint = false) {
     const validItems = items.filter(it => it.product_id)
     if (!validItems.length) { alert('Add at least one product.'); return }
     setSaving(true)
     try {
-      await saveOutward({ id: editing?.id, outward_date: form.outward_date, supplier_id: form.supplier_id || null, supplier_ref_no: form.supplier_ref_no || null, remarks: form.remarks || null, factory_id: form.factory_id || factoryId || null, items: validItems })
-      setShowForm(false); loadData()
+      const saved = await saveOutward({ id: editing?.id, outward_date: form.outward_date, supplier_id: form.supplier_id || null, supplier_ref_no: form.supplier_ref_no || null, remarks: form.remarks || null, factory_id: form.factory_id || factoryId || null, items: validItems })
+      setShowForm(false)
+      const next = await fetchOutwards(factoryId || undefined)
+      setRows(next)
+      if (doPrint) {
+        const full = next.find(r => r.id === saved.id) ?? (editing ?? null)
+        if (full) await printLabelForOutward(full, products)
+      }
     } catch (e: any) { alert(e.message) } finally { setSaving(false) }
+  }
+
+  async function handlePrint(row: IOOutward) {
+    try {
+      await printLabelForOutward(row, products)
+    } catch (e: any) {
+      alert(e.message)
+    }
   }
   async function handleDelete(id: string) { if (!confirm('Delete?')) return; await deleteOutward(id); loadData() }
   function setItem(i: number, field: keyof IOLineItem, value: any) { setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it)) }
 
   function downloadTemplate() {
-    const csv = 'Outward No,Date,Supplier,Ref No,Factory,Product,Qty,Price (₹),Remarks\n,2024-01-15,Supplier Name,PO-001,Factory Name,Product Name,10,500,Optional notes'
+    const csv = 'Outward No,Date,Customer,Ref No,Factory,Product,Qty,Price (₹),Remarks\n,2024-01-15,Customer Name,PO-001,Factory Name,Product Name,10,500,Optional notes'
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'outward_template.csv'; a.click()
@@ -89,16 +104,17 @@ export default function OutwardPage() {
     const col = (row: string[], name: string) => { const idx = headers.findIndex(h => h === name); return idx >= 0 ? (row[idx] ?? '') : '' }
     const map: Record<string, any> = {}
     for (const cols of dataRows) {
-      const date = col(cols, 'date'); const supplierName = col(cols, 'supplier'); const refNo = col(cols, 'ref no'); const factoryName = col(cols, 'factory'); const productName = col(cols, 'product'); const qtyStr = col(cols, 'qty'); const priceStr = col(cols, 'price (₹)') || col(cols, 'price'); const remarks = col(cols, 'remarks')
-      const company = companies.find(c => c.company_name.toLowerCase() === supplierName.toLowerCase())
+      const date = col(cols, 'date'); const customerName = col(cols, 'customer') || col(cols, 'supplier'); const refNo = col(cols, 'ref no'); const factoryName = col(cols, 'factory'); const productName = col(cols, 'product'); const qtyStr = col(cols, 'qty'); const priceStr = col(cols, 'price (₹)') || col(cols, 'price'); const remarks = col(cols, 'remarks')
+      const company = companies.find(c => c.company_name.toLowerCase() === customerName.toLowerCase())
       const factory = factories.find(f => f.name.toLowerCase() === factoryName.toLowerCase())
       const product = products.find(p => p.product_name.toLowerCase() === productName.toLowerCase())
-      const key = `${date}|${company?.id ?? supplierName}|${refNo}|${factory?.id ?? ''}`
+      const key = `${date}|${company?.id ?? customerName}|${refNo}|${factory?.id ?? ''}`
       if (!map[key]) {
         const errors: string[] = []
-        if (!company) errors.push(`Supplier "${supplierName}" not found`)
-        if (!factory && factories.length > 1) errors.push(`Factory "${factoryName}" not found`)
-        map[key] = { outward_date: date, supplier_id: company?.id ?? '', supplier_name: company?.company_name ?? supplierName, supplier_ref_no: refNo ?? '', factory_id: factory?.id ?? factoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
+        if (!company) errors.push(`Customer "${customerName}" not found`)
+        const chosenFactoryId = factory?.id ?? factoryId
+        if (!chosenFactoryId && factories.length > 1 && factoryName) errors.push(`Factory "${factoryName}" not found`)
+        map[key] = { outward_date: date, supplier_id: company?.id ?? '', supplier_name: company?.company_name ?? customerName, supplier_ref_no: refNo ?? '', factory_id: chosenFactoryId, factory_name: factory?.name ?? factoryName ?? '', items: [], errors }
       }
       map[key].items.push({ product_id: product?.id ?? '', product_name: product?.product_name ?? productName, quantity: parseFloat(qtyStr) || 0, price: parseFloat(priceStr) || 0, remarks: remarks ?? '', error: !product ? `"${productName}" not found` : '' })
     }
@@ -140,7 +156,7 @@ export default function OutwardPage() {
     URL.revokeObjectURL(url)
   }
 
-  const filtered = rows.filter(r => r.outward_number.toLowerCase().includes(search.toLowerCase()) || (r.supplier?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
+    const filtered = rows.filter(r => r.outward_number.toLowerCase().includes(search.toLowerCase()) || (r.supplier?.company_name ?? '').toLowerCase().includes(search.toLowerCase()))
   const rowTotal = (its: IOLineItem[]) => its.reduce((s, it) => s + it.price * it.quantity, 0)
 
   return (
@@ -156,7 +172,7 @@ export default function OutwardPage() {
       </div>
       <div className="input flex items-center gap-2 mb-4 w-full">
         <Search size={14} className="text-muted flex-shrink-0"/>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search outward no, supplier…" className="flex-1 bg-transparent outline-none text-sm text-primary placeholder:text-muted"/>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search outward no, customer…" className="flex-1 bg-transparent outline-none text-sm text-primary placeholder:text-muted"/>
       </div>
       <div className="card overflow-hidden">
         <div className="sm:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
@@ -170,6 +186,7 @@ export default function OutwardPage() {
                   <div className="text-xs text-muted mt-0.5">{fmtDate(row.outward_date)}</div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => handlePrint(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={14}/></button>
                   <button onClick={() => openEdit(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={14}/></button>
                   <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                 </div>
@@ -188,7 +205,7 @@ export default function OutwardPage() {
         </div>
         <div className="hidden sm:block overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Outward No</th><th>Date</th><th>Supplier</th><th>Ref No</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
+            <thead><tr><th>Outward No</th><th>Date</th><th>Customer</th><th>Ref No</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></td></tr>
               : filtered.length === 0 ? <tr><td colSpan={8} className="py-12 text-center text-muted text-sm">No outward records</td></tr>
@@ -202,6 +219,7 @@ export default function OutwardPage() {
                   <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                   <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
                   <td className="text-right"><div className="flex items-center justify-end gap-1">
+                    <button onClick={() => handlePrint(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={13}/></button>
                     <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
                     <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                   </div></td>
@@ -224,8 +242,8 @@ export default function OutwardPage() {
                 <div><label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">Date</label><input type="date" value={form.outward_date} onChange={e => setForm(f => ({ ...f, outward_date: e.target.value }))} className="input w-full"/></div>
                 {factories.length > 1 && <div><label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">Factory</label><select value={form.factory_id} onChange={e => setForm(f => ({ ...f, factory_id: e.target.value }))} className="input w-full"><option value="">— Select —</option>{factories.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5"><label className="text-xs font-medium text-muted uppercase tracking-wider">Supplier</label><button onClick={() => setShowCompanyModal(true)} className="text-[11px] text-inputer hover:underline">+ Add New</button></div>
-                  <select value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))} className="input w-full"><option value="">— Select Supplier —</option>{companies.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select>
+                  <div className="flex items-center justify-between mb-1.5"><label className="text-xs font-medium text-muted uppercase tracking-wider">Customer</label><button onClick={() => setShowCompanyModal(true)} className="text-[11px] text-inputer hover:underline">+ Add New</button></div>
+                  <select value={form.supplier_id} onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))} className="input w-full"><option value="">— Select Customer —</option>{companies.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select>
                 </div>
                 <div><label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">Ref No</label><input value={form.supplier_ref_no} onChange={e => setForm(f => ({ ...f, supplier_ref_no: e.target.value }))} placeholder="e.g. PO-001" className="input w-full"/></div>
                 <div className="sm:col-span-2"><label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">Remarks</label><input value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="Optional notes" className="input w-full"/></div>
@@ -234,7 +252,7 @@ export default function OutwardPage() {
                 <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-semibold text-primary">Line Items</h3><button onClick={() => setItems(p => [...p, EMPTY_ITEM()])} className="text-xs text-inputer hover:underline flex items-center gap-1"><Plus size={12}/> Add Row</button></div>
                 <div className="border border-border rounded-xl overflow-hidden">
                   <table className="w-full text-xs">
-                    <thead style={{ background: 'var(--color-surface)' }}><tr className="border-b border-border"><th className="text-left px-3 py-2 font-semibold text-muted">Product</th><th className="text-right px-3 py-2 font-semibold text-muted">Qty</th><th className="text-right px-3 py-2 font-semibold text-muted">Price</th><th className="text-right px-3 py-2 font-semibold text-muted">Total</th><th className="text-left px-3 py-2 font-semibold text-muted">Remarks</th><th className="px-2"/></tr></thead>
+                    <thead style={{ background: 'var(--color-surface)' }}><tr className="border-b border-border"><th className="text-left px-3 py-2 font-semibold text-muted">Product</th><th className="text-right px-3 py-2 font-semibold text-muted">QTY (KGs)</th><th className="text-right px-3 py-2 font-semibold text-muted">Price</th><th className="text-right px-3 py-2 font-semibold text-muted">Total</th><th className="text-left px-3 py-2 font-semibold text-muted">Remarks</th><th className="px-2"/></tr></thead>
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={i} className="border-b border-border last:border-0">
@@ -254,7 +272,8 @@ export default function OutwardPage() {
             </div>
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
               <button onClick={() => setShowForm(false)} className="btn btn-ghost">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-inputer">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Save size={14}/>}{editing ? 'Update' : 'Save'}</button>
+              <button onClick={() => handleSave(true)} disabled={saving} className="btn btn-ghost">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Printer size={14}/>}{editing ? 'Update & Print' : 'Save & Print'}</button>
+              <button onClick={() => handleSave(false)} disabled={saving} className="btn btn-inputer">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Save size={14}/>}{editing ? 'Update' : 'Save'}</button>
             </div>
           </div>
         </div>
@@ -280,7 +299,7 @@ export default function OutwardPage() {
                   <tr className="border-b border-border">
                     <th className="text-left px-3 py-2 text-muted font-semibold w-8"></th>
                     <th className="text-left px-3 py-2 text-muted font-semibold">Date</th>
-                    <th className="text-left px-3 py-2 text-muted font-semibold">Supplier</th>
+                    <th className="text-left px-3 py-2 text-muted font-semibold">Customer</th>
                     <th className="text-left px-3 py-2 text-muted font-semibold">Ref No</th>
                     <th className="text-left px-3 py-2 text-muted font-semibold">Factory</th>
                     <th className="text-right px-3 py-2 text-muted font-semibold">Items</th>
@@ -322,7 +341,7 @@ export default function OutwardPage() {
       )}
 
       {showProductModal && <ProductModal onClose={() => setShowProductModal(false)} onSaved={async (p) => { const upd = await fetchProducts(); setProducts(upd); setItems(prev => { const last = prev[prev.length-1]; return last && !last.product_id ? [...prev.slice(0,-1), {...last, product_id: p.id}] : prev }); setShowProductModal(false) }}/>}
-      {showCompanyModal && <CompanyModal defaultType="supplier" onClose={() => setShowCompanyModal(false)} onSaved={async (c) => { const upd = await fetchCompanies('supplier'); setCompanies(upd); setForm(f => ({ ...f, supplier_id: c.id })); setShowCompanyModal(false) }}/>}
+      {showCompanyModal && <CompanyModal defaultType="customer" onClose={() => setShowCompanyModal(false)} onSaved={async (c) => { const upd = await fetchCompanies('customer'); setCompanies(upd); setForm(f => ({ ...f, supplier_id: c.id })); setShowCompanyModal(false) }}/>}
     </div>
   )
 }

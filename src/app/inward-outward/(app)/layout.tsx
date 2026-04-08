@@ -1,3 +1,4 @@
+import '../../globals.css'
 import IOLayout from '@/components/io/IOLayout'
 import { IOFactoryProvider } from '@/contexts/IOFactoryContext'
 

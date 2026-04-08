@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { saveCompany, fetchCountries, fetchStates, fetchCities } from '@/lib/io/api'
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { saveCompany, ensureCountry, ensureState, ensureCity } from '@/lib/io/api'
 import type { IOCompany, IOCountry, IOState, IOCity, CompanyType } from '@/lib/io/types'
 import { X, Save } from 'lucide-react'
 
@@ -8,6 +8,8 @@ interface Props {
   editing?: IOCompany | null
   defaultType?: CompanyType
   factoryId?: string | null
+  lockCountry?: boolean
+  lockCountryName?: string
   onClose: () => void
   onSaved: (company: IOCompany) => void
 }
@@ -18,11 +20,138 @@ const TYPES: { value: CompanyType; label: string }[] = [
   { value: 'both',     label: 'Both'     },
 ]
 
-export default function CompanyModal({ editing, defaultType = 'supplier', factoryId, onClose, onSaved }: Props) {
-  const [countries, setCountries] = useState<IOCountry[]>([])
-  const [states, setStates]       = useState<IOState[]>([])
-  const [cities, setCities]       = useState<IOCity[]>([])
+type ComboOption = { id: string; label: string; subLabel?: string }
+
+function ComboSearch({
+  label,
+  placeholder,
+  disabled,
+  valueId,
+  valueLabel,
+  query,
+  setQuery,
+  options,
+  onSelect,
+  maxItems = 40,
+}: {
+  label: string
+  placeholder: string
+  disabled?: boolean
+  valueId: string
+  valueLabel: string
+  query: string
+  setQuery: (v: string) => void
+  options: ComboOption[]
+  onSelect: (id: string) => void | Promise<void>
+  maxItems?: number
+}) {
+  const [open, setOpen] = useState(false)
+  const blurTimeout = useRef<number | null>(null)
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const base = options
+      .filter(o => !q || o.label.toLowerCase().startsWith(q))
+      .slice(0, maxItems)
+    // If no query, still show some options (like a combo dropdown)
+    return base
+  }, [options, query, maxItems])
+
+  useEffect(() => {
+    if (!open) return
+    function onDocDown(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest?.('[data-combo-root="1"]')) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocDown)
+    return () => document.removeEventListener('mousedown', onDocDown)
+  }, [open])
+
+  const displayValue = query || valueLabel
+
+  return (
+    <div data-combo-root="1" className="relative">
+      <label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">{label}</label>
+      <div className="relative">
+        <input
+          value={displayValue}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            if (blurTimeout.current) window.clearTimeout(blurTimeout.current)
+            blurTimeout.current = window.setTimeout(() => setOpen(false), 150)
+          }}
+          placeholder={placeholder}
+          className="input w-full pr-9"
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => !disabled && setOpen(o => !o)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+          disabled={disabled}
+          aria-label="Toggle options"
+        >
+          <span className="text-sm">{open ? '▴' : '▾'}</span>
+        </button>
+      </div>
+
+      {/* Hidden input to keep old id-based form state */}
+      <input type="hidden" value={valueId} readOnly />
+
+      {open && !disabled && (
+        <div className="absolute z-[80] mt-2 w-full rounded-xl border border-border shadow-lg overflow-hidden"
+          style={{ background: 'var(--color-panel)' }}>
+          <div className="max-h-[220px] overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-muted">No matches</div>
+            ) : (
+              filtered.map(o => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={async () => {
+                    await onSelect(o.id)
+                    setQuery('')
+                    setOpen(false)
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-layer-sm transition-colors border-b border-border last:border-b-0"
+                >
+                  <div className="text-sm text-primary font-medium">{o.label}</div>
+                  {o.subLabel && <div className="text-[11px] text-muted mt-0.5">{o.subLabel}</div>}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function CompanyModal({
+  editing,
+  defaultType = 'supplier',
+  factoryId,
+  lockCountry = false,
+  lockCountryName,
+  onClose,
+  onSaved,
+}: Props) {
+  // Note: These arrays are only for showing web results.
+  // Selected ids saved into `form` are DB ids (from ensureCountry/ensureState/ensureCity).
+  const [countries, setCountries] = useState<Array<{ name: string; code?: string | null }>>([])
+  const [states, setStates]       = useState<Array<{ name: string }>>([])
+  const [cities, setCities]       = useState<Array<{ name: string }>>([])
   const [saving, setSaving]       = useState(false)
+  const [countryQuery, setCountryQuery] = useState('')
+  const [stateQuery, setStateQuery]     = useState('')
+  const [cityQuery, setCityQuery]       = useState('')
+  const [countryLabel, setCountryLabel] = useState(editing?.country?.name ?? '')
+  const [stateLabel, setStateLabel]     = useState(editing?.state?.name ?? '')
+  const [cityLabel, setCityLabel]       = useState(editing?.city?.name ?? '')
 
   const [form, setForm] = useState({
     company_name: editing?.company_name  ?? '',
@@ -38,22 +167,77 @@ export default function CompanyModal({ editing, defaultType = 'supplier', factor
   })
 
   useEffect(() => {
-    fetchCountries().then(setCountries).catch(console.error)
-    if (editing?.country_id) fetchStates(editing.country_id).then(setStates)
-    if (editing?.state_id)   fetchCities(editing.state_id).then(setCities)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/geo/countries')
+        const list = await res.json()
+        setCountries((list ?? []).map((c: any) => ({ name: c.name, code: c.code ?? null })))
+      } catch (e) {
+        console.error(e)
+      }
+    })()
   }, [])
 
-  async function onCountryChange(cid: string) {
-    setForm(f => ({ ...f, country_id: cid, state_id: '', city_id: '' }))
+  useEffect(() => {
+    if (!lockCountry || !lockCountryName) return
+    if (form.country_id) return
+    const c = countries.find(x => x.name.toLowerCase() === lockCountryName.toLowerCase())
+    if (!c) return
+    ;(async () => {
+      await onCountrySelect(c.name, c.code ?? undefined)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockCountry, lockCountryName, countries])
+
+  async function onCountrySelect(countryName: string, code?: string) {
+    // Ensure this country exists in DB and store its id
+    const saved = await ensureCountry(countryName, code ?? null)
+    setForm(f => ({ ...f, country_id: String(saved.id), state_id: '', city_id: '' }))
+    setCountryLabel(countryName)
+    setStateLabel('')
+    setCityLabel('')
     setStates([]); setCities([])
-    if (cid) fetchStates(parseInt(cid)).then(setStates)
+
+    // Fetch states from web (not DB)
+    try {
+      const res = await fetch(`/api/geo/states?country=${encodeURIComponent(countryName)}`)
+      const list = await res.json()
+      setStates((list ?? []).map((s: any) => ({ name: s.name })))
+    } catch (e) { console.error(e) }
   }
 
-  async function onStateChange(sid: string) {
-    setForm(f => ({ ...f, state_id: sid, city_id: '' }))
+  async function onStateSelect(stateName: string) {
+    const cid = form.country_id ? parseInt(form.country_id) : null
+    if (!cid) return
+    const countryName = countryLabel
+    if (!countryName) return
+
+    const saved = await ensureState(stateName, cid, null)
+    setForm(f => ({ ...f, state_id: String(saved.id), city_id: '' }))
+    setStateLabel(stateName)
+    setCityLabel('')
     setCities([])
-    if (sid) fetchCities(parseInt(sid)).then(setCities)
+
+    // Fetch cities from web (not DB)
+    try {
+      const res = await fetch(`/api/geo/cities?country=${encodeURIComponent(countryName)}&state=${encodeURIComponent(stateName)}`)
+      const list = await res.json()
+      setCities((list ?? []).map((c: any) => ({ name: c.name })))
+    } catch (e) { console.error(e) }
   }
+
+  const countryOptions: ComboOption[] = useMemo(
+    () => countries.map(c => ({ id: c.name, label: c.name, subLabel: c.code ? `Code: ${c.code}` : undefined })),
+    [countries]
+  )
+  const stateOptions: ComboOption[] = useMemo(
+    () => states.map(s => ({ id: s.name, label: s.name })),
+    [states]
+  )
+  const cityOptions: ComboOption[] = useMemo(
+    () => cities.map(c => ({ id: c.name, label: c.name })),
+    [cities]
+  )
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }))
@@ -125,27 +309,53 @@ export default function CompanyModal({ editing, defaultType = 'supplier', factor
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">Country</label>
-              <select value={form.country_id} onChange={e => onCountryChange(e.target.value)} className="input w-full">
-                <option value="">— Select —</option>
-                {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">State</label>
-              <select value={form.state_id} onChange={e => onStateChange(e.target.value)} disabled={!form.country_id} className="input w-full disabled:opacity-40">
-                <option value="">— Select —</option>
-                {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1.5 uppercase tracking-wider">City</label>
-              <select value={form.city_id} onChange={f('city_id')} disabled={!form.state_id} className="input w-full disabled:opacity-40">
-                <option value="">— Select —</option>
-                {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
+            <ComboSearch
+              label="Country"
+              placeholder={lockCountry && lockCountryName ? lockCountryName : 'Type to search…'}
+              disabled={lockCountry}
+              valueId={form.country_id}
+              valueLabel={countryLabel}
+              query={countryQuery}
+              setQuery={setCountryQuery}
+              options={countryOptions}
+              onSelect={async (id) => {
+                const picked = countries.find(c => c.name === id)
+                await onCountrySelect(id, picked?.code ?? undefined)
+              }}
+              maxItems={60}
+            />
+            <ComboSearch
+              label="State"
+              placeholder={!form.country_id ? 'Select country first' : 'Type to search…'}
+              disabled={!form.country_id}
+              valueId={form.state_id}
+              valueLabel={stateLabel}
+              query={stateQuery}
+              setQuery={setStateQuery}
+              options={stateOptions}
+              onSelect={async (id) => {
+                await onStateSelect(id)
+              }}
+              maxItems={80}
+            />
+            <ComboSearch
+              label="City"
+              placeholder={!form.state_id ? 'Select state first' : 'Type to search…'}
+              disabled={!form.state_id}
+              valueId={form.city_id}
+              valueLabel={cityLabel}
+              query={cityQuery}
+              setQuery={setCityQuery}
+              options={cityOptions}
+              onSelect={async (id) => {
+                const sid = form.state_id ? parseInt(form.state_id) : null
+                if (!sid) return
+                const saved = await ensureCity(id, sid)
+                setForm(prev => ({ ...prev, city_id: String(saved.id) }))
+                setCityLabel(id)
+              }}
+              maxItems={80}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

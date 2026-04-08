@@ -533,7 +533,10 @@ export default function VidhiHexachemWebsite() {
   const SalesNetworkSection = () => (
     <section className="py-20 bg-slate-50">
       <div className="max-w-6xl mx-auto px-4">
-        <p className="text-xs uppercase tracking-[0.25em] text-gray-500 text-center mb-2">WE ARE GLOBAL</p>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <img src="/image.png" alt="Global" className="w-7 h-7 opacity-80" />
+          <p className="text-xs uppercase tracking-[0.25em] text-gray-500 text-center">WE ARE GLOBAL</p>
+        </div>
         <h3 className="text-4xl font-black text-center text-slate-900 mb-10">SALES NETWORK</h3>
         <div className="bg-white rounded-2xl shadow-lg p-4">
           <WorldMapSVG />

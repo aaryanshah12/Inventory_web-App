@@ -23,7 +23,16 @@ export default function ProductModal({ editing, factoryId, onClose, onSaved }: P
   })
 
   useEffect(() => {
-    fetchUnits().then(setUnits).catch(console.error)
+    fetchUnits().then(u => {
+      setUnits(u)
+      if (editing) return
+      setForm(f => {
+        if (f.unit_id) return f
+        const kg = u.find(x => (x.abbreviation ?? '').toLowerCase() === 'kg')
+          ?? u.find(x => x.name.toLowerCase().includes('kg') || x.name.toLowerCase().includes('kilo'))
+        return kg ? { ...f, unit_id: String(kg.id) } : f
+      })
+    }).catch(console.error)
   }, [])
 
   async function handleSave() {
