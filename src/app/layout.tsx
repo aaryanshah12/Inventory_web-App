@@ -29,10 +29,6 @@
       title: 'Vidhi Hexa Chem | Chemical Intermediates Manufacturer',
       description: 'Manufacturer and exporter of 17 premium chemical intermediates. Anand, Gujarat, India.',
     },
-    icons: {
-      icon: '/image.png',
-      apple: '/image.png',
-    },
     robots: {
       index: true,
       follow: true,
