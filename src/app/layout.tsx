@@ -48,13 +48,21 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Vidhi Hexachem LLP",
-  url: "https://vidhihexachem.in",
-  logo: "https://vidhihexachem.in/logo.png",
-};
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Vidhi HexaChem LLP",
+    url: "https://vidhihexachem.in",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Vidhi Hexachem LLP",
+    url: "https://vidhihexachem.in",
+    logo: "https://vidhihexachem.in/logo.png",
+  },
+];
 
 export default function RootLayout({
   children,
