@@ -285,52 +285,57 @@
     products: IOProduct[],
   ) {
     const { PDFDocument, StandardFonts, rgb } = await getPdfLib()
-    const ab = await fetchArrayBuffer('/label.pdf')
-    const src = await PDFDocument.load(ab)
-    const tplPage = src.getPages()[0]
-    const { width, height } = tplPage.getSize()
+
+    // Label size: 100mm × 60mm (283pt × 170pt) — matches standard product sticker
+    const W = 283
+    const H = 170
 
     const pdf = await PDFDocument.create()
-    const font       = await pdf.embedFont(StandardFonts.HelveticaBold)
-    const fontSmall = await pdf.embedFont(StandardFonts.Helvetica)
+    const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold)
+    const fontReg  = await pdf.embedFont(StandardFonts.Helvetica)
 
-    const pages = items.length ? items : [{ product_id: '', quantity: 0, price: 0 } as any]
-    for (const it of pages) {
-      const [page] = await pdf.copyPages(src, [0])
-      pdf.addPage(page)
+    const entries = items.length ? items : [{ product_id: '', quantity: 0, price: 0 } as any]
 
+    for (const it of entries) {
+      const page = pdf.addPage([W, H])
       const product = safeText(it.product?.product_name || productNameById(products, it.product_id))
+      const r = (remarks || safeText(it.remarks ?? '')).trim()
 
-      const xLeft    = width * 0.10
-      const yProduct = height * 0.66
-      const yMeta1   = height * 0.45
-      const yMeta2   = height * 0.32
+      const margin = 10
+      const contentW = W - margin * 2
 
-      const labelSize = 9
-      const labelRef  = 'Ref No. :'
-      const labelDate = 'Date :'
-      const colonX = xLeft + Math.max(
-        fontSmall.widthOfTextAtSize(labelRef,  labelSize),
-        fontSmall.widthOfTextAtSize(labelDate, labelSize),
-      )
-      const xValue = colonX + 5
+      // ── Company name ─────────────────────────────────────
+      let y = H - 14
+      page.drawText('VIDHI HEXACHEM LLP', { x: margin, y, size: 8, font: fontReg, color: rgb(0.4, 0.4, 0.4) })
 
-      page.drawText(product || '—', { x: xLeft, y: yProduct, size: 16, font })
-      page.drawText(labelRef,  { x: colonX - fontSmall.widthOfTextAtSize(labelRef,  labelSize), y: yMeta1, size: labelSize, font: fontSmall })
-      page.drawText(number || '—', { x: xValue, y: yMeta1, size: 10, font: fontSmall })
-      page.drawText(labelDate, { x: colonX - fontSmall.widthOfTextAtSize(labelDate, labelSize), y: yMeta2, size: labelSize, font: fontSmall })
-      page.drawText(fmtLabelDate(date) || '—', { x: xValue, y: yMeta2, size: 10, font: fontSmall })
+      // ── Divider ───────────────────────────────────────────
+      y -= 6
+      page.drawLine({ start: { x: margin, y }, end: { x: W - margin, y }, thickness: 0.4, color: rgb(0.75, 0.75, 0.75) })
 
-      const r = remarks || safeText(it.remarks ?? '')
+      // ── Product name ──────────────────────────────────────
+      y -= 22
+      page.drawText(product || '—', { x: margin, y, size: 18, font: fontBold })
+
+      // ── Divider ───────────────────────────────────────────
+      y -= 10
+      page.drawLine({ start: { x: margin, y }, end: { x: W - margin, y }, thickness: 0.4, color: rgb(0.75, 0.75, 0.75) })
+
+      // ── Ref No + Date ─────────────────────────────────────
+      y -= 14
+      const sz = 9
+      page.drawText('Ref No. :', { x: margin, y, size: sz, font: fontReg })
+      page.drawText(number || '—', { x: margin + 46, y, size: sz, font: fontBold })
+
+      page.drawText('Date :', { x: margin + 148, y, size: sz, font: fontReg })
+      page.drawText(fmtLabelDate(date) || '—', { x: margin + 178, y, size: sz, font: fontBold })
+
+      // ── Remarks ───────────────────────────────────────────
       if (r) {
-        const x     = width * 0.58
-        const y     = yMeta1
-        const size  = 8
-        const maxW  = width - x - 6
-        const lineH = 10
-        const lines = wrapParagraphLines(r, fontSmall, size, Math.max(20, maxW)).slice(0, 4)
+        y -= 16
+        page.drawText('Remarks :', { x: margin, y, size: sz, font: fontReg })
+        const lines = wrapParagraphLines(r, fontReg, sz, contentW - 52).slice(0, 3)
         lines.forEach((line, idx) => {
-          page.drawText(line, { x, y: y - idx * lineH, size, font: fontSmall, color: rgb(0, 0, 0) })
+          page.drawText(line, { x: margin + 52, y: y - idx * 11, size: sz, font: fontBold })
         })
       }
     }
