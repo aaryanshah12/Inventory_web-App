@@ -286,16 +286,16 @@ async function printLabelPages(
   const ab = await fetchArrayBuffer('/label.pdf')
   const src = await PDFDocument.load(ab)
   const tplPage = src.getPages()[0]
-  const { width: tW, height: tH } = tplPage.getSize()
+  void tplPage
 
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.HelveticaBold)
   const fontSmall = await pdf.embedFont(StandardFonts.Helvetica)
 
-  // Use the template's native dimensions so it renders without distortion.
-  // The label printer Page Setup (100×50mm) will scale the PDF to the sticker.
-  const width = tW
-  const height = tH
+  // Force landscape 100×50mm so the browser prints without manual rotation,
+  // avoiding the header/footer trimming caused by rotating in the print dialog.
+  const width = 283.5   // 100mm in points
+  const height = 141.75 // 50mm in points
 
   // Embed template once for reuse across all label pages
   const [embeddedTpl] = await pdf.embedPdf(src, [0])
@@ -308,9 +308,9 @@ async function printLabelPages(
     const product = safeText(it.product?.product_name || productNameById(products, it.product_id))
 
     const xLeft = width * 0.10
-    const yProduct = height * 0.62
-    const yMeta1 = height * 0.47
-    const yMeta2 = height * 0.36
+    const yProduct = height * 0.66
+    const yMeta1   = height * 0.45
+    const yMeta2   = height * 0.32
 
     const labelSize = 9
     const labelRef = 'Ref No. :'
