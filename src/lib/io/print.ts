@@ -282,7 +282,7 @@
     items: IOLineItem[],
     products: IOProduct[],
   ) {
-    const { PDFDocument, StandardFonts, rgb, degrees } = await getPdfLib()
+    const { PDFDocument, StandardFonts, rgb } = await getPdfLib()
     const ab = await fetchArrayBuffer('/label.pdf')
     const src = await PDFDocument.load(ab)
     const tplPage = src.getPages()[0]
@@ -292,13 +292,10 @@
     const font      = await pdf.embedFont(StandardFonts.HelveticaBold)
     const fontSmall = await pdf.embedFont(StandardFonts.Helvetica)
 
-    // Output page: 100×50mm in landscape (100mm wide, 50mm tall)
-    const MM_TO_PT = 72 / 25.4
-    const width  = 100 * MM_TO_PT  // ~283.46 pt
-    const height = 50  * MM_TO_PT  // ~141.73 pt
-
-    // Template is portrait (tH > tW) — rotate 90° to fill landscape page
-    const needsRotation = tH > tW
+    // Use the template's native dimensions so it renders without distortion.
+    // The label printer Page Setup (100×50mm) will scale the PDF to the sticker.
+    const width  = tW
+    const height = tH
 
     // Embed template once for reuse across all label pages
     const [embeddedTpl] = await pdf.embedPdf(src, [0])
@@ -306,13 +303,7 @@
     const pages = items.length ? items : [{ product_id: '', quantity: 0, price: 0 } as any]
     for (const it of pages) {
       const page = pdf.addPage([width, height])
-
-      // Draw template background — rotate 90° CCW if it was portrait
-      if (needsRotation) {
-        page.drawPage(embeddedTpl, { x: 0, y: height, rotate: degrees(90), width: height, height: width })
-      } else {
-        page.drawPage(embeddedTpl, { x: 0, y: 0, width, height })
-      }
+      page.drawPage(embeddedTpl, { x: 0, y: 0, width, height })
 
       const product = safeText(it.product?.product_name || productNameById(products, it.product_id))
 
@@ -330,7 +321,14 @@
       )
       const xValue = colonX + 5
 
-      page.drawText(product || '—', { x: xLeft, y: yProduct, size: 16, font })
+      const productMaxW = width * 0.50
+      const productSize = (() => {
+        for (const s of [16, 13, 11, 9]) {
+          if (font.widthOfTextAtSize(product || '—', s) <= productMaxW) return s
+        }
+        return 9
+      })()
+      page.drawText(product || '—', { x: xLeft, y: yProduct, size: productSize, font })
       page.drawText(labelRef,  { x: colonX - fontSmall.widthOfTextAtSize(labelRef,  labelSize), y: yMeta1, size: labelSize, font: fontSmall })
       page.drawText(number || '—', { x: xValue, y: yMeta1, size: 10, font: fontSmall })
       page.drawText(labelDate, { x: colonX - fontSmall.widthOfTextAtSize(labelDate, labelSize), y: yMeta2, size: labelSize, font: fontSmall })
