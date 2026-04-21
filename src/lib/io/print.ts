@@ -300,7 +300,8 @@ async function printLabelPages(
   // Embed template once for reuse across all label pages
   const [embeddedTpl] = await pdf.embedPdf(src, [0])
 
-  const pages = items.length ? items : [{ product_id: '', quantity: 0, price: 0 } as any]
+  const validItems = items.filter(it => it.product_id || it.product?.product_name)
+  const pages = validItems.length ? validItems : [{ product_id: '', quantity: 0, price: 0 } as any]
   for (const it of pages) {
     const page = pdf.addPage([width, height])
     page.drawPage(embeddedTpl, { x: 0, y: 0, width, height })
