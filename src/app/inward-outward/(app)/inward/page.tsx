@@ -9,6 +9,7 @@ import {
 import type { IOInward, IOLineItem, IOCompany, IOProduct } from '@/lib/io/types'
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
+import ProductComboSearch from '@/components/io/ProductComboSearch'
 import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload, Printer } from 'lucide-react'
 import { printLabelForInward } from '@/lib/io/print'
 
@@ -183,7 +184,7 @@ export default function InwardPage() {
         <Search size={14} className="text-muted flex-shrink-0"/>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search inward no, supplier…" className="flex-1 bg-transparent outline-none text-sm text-primary placeholder:text-muted"/>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-visible">
         {/* Mobile cards */}
         <div className="sm:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {loading ? <div className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></div>
@@ -262,13 +263,13 @@ export default function InwardPage() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-semibold text-primary">Line Items</h3><button onClick={() => setItems(p => [...p, EMPTY_ITEM()])} className="text-xs text-inputer hover:underline flex items-center gap-1"><Plus size={12}/> Add Row</button></div>
-                <div className="border border-border rounded-xl overflow-hidden">
+                <div className="border border-border rounded-xl overflow-visible">
                   <table className="w-full text-xs">
                     <thead style={{ background: 'var(--color-surface)' }}><tr className="border-b border-border"><th className="text-left px-3 py-2 font-semibold text-muted">Product</th><th className="text-right px-3 py-2 font-semibold text-muted">QTY (KGs)</th><th className="text-right px-3 py-2 font-semibold text-muted">Price</th><th className="text-right px-3 py-2 font-semibold text-muted">Total</th><th className="text-left px-3 py-2 font-semibold text-muted">Remarks</th><th className="px-2"/></tr></thead>
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={i} className="border-b border-border last:border-0">
-                          <td className="px-2 py-2 min-w-[180px]"><div className="flex gap-1"><select value={it.product_id} onChange={e => setItem(i, 'product_id', e.target.value)} className="input flex-1 text-xs py-1.5"><option value="">— Product —</option>{products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}</select><button onClick={() => setShowProductModal(true)} className="btn btn-inputer px-2 py-1.5 text-xs">+</button></div></td>
+                          <td className="px-2 py-2 min-w-[180px]"><div className="flex gap-1"><ProductComboSearch products={products} value={it.product_id} onChange={v => setItem(i, 'product_id', v)} className="flex-1"/><button onClick={() => setShowProductModal(true)} className="btn btn-inputer px-2 py-1.5 text-xs">+</button></div></td>
                           <td className="px-2 py-2"><input type="number" min={0} value={it.quantity || ''} placeholder="0" onChange={e => setItem(i, 'quantity', parseFloat(e.target.value) || 0)} className="input w-20 text-right py-1.5 text-xs"/></td>
                           <td className="px-2 py-2"><input type="number" min={0} value={it.price || ''} placeholder="0" onChange={e => setItem(i, 'price', parseFloat(e.target.value) || 0)} className="input w-24 text-right py-1.5 text-xs"/></td>
                           <td className="px-2 py-2 text-right font-semibold text-primary whitespace-nowrap">₹{(it.price * it.quantity).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>

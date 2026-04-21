@@ -256,6 +256,16 @@
     await printLabelPages('Outward', safeText(row.outward_number), row.outward_date, safeText(row.remarks ?? ''), row.items ?? [], products)
   }
 
+  export async function printLabelForDomestic(row: IODomestic, products: IOProduct[]) {
+    const id = safeText(row.tax_invoice_number || (row as any).invoice_number)
+    await printLabelPages('Domestic', id, (row as any).invoice_date, safeText(row.remarks ?? ''), (row.items ?? []) as any[], products)
+  }
+
+  export async function printLabelForInternational(row: IOInternational, products: IOProduct[]) {
+    const id = safeText(row.tax_invoice_number || (row as any).invoice_number)
+    await printLabelPages('International', id, (row as any).invoice_date, safeText(row.remarks ?? ''), (row.items ?? []) as any[], products)
+  }
+
   function fmtLabelDate(d?: string | null) {
     if (!d) return ''
     const dt = new Date(d)

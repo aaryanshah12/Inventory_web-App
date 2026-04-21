@@ -6,7 +6,8 @@ import type { IOInternational, IOLineItem, IOCompany, IOProduct } from '@/lib/io
 import ProductModal from '@/components/io/ProductModal'
 import CompanyModal from '@/components/io/CompanyModal'
 import { Plus, Pencil, Trash2, X, Save, Download, Search, Upload, Printer } from 'lucide-react'
-import { printLetterHeadInvoice } from '@/lib/io/print'
+import { printLetterHeadInvoice, printLabelForInternational } from '@/lib/io/print'
+import ProductComboSearch from '@/components/io/ProductComboSearch'
 
 const EMPTY_ITEM = (): IOLineItem => ({ product_id: '', quantity: 1, price: 0, remarks: '' })
 
@@ -28,6 +29,7 @@ export default function InternationalPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importGroups, setImportGroups] = useState<any[]>([])
   const [importing, setImporting] = useState(false)
+  const [printDropdownId, setPrintDropdownId] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [factoryId])
 
@@ -41,7 +43,7 @@ export default function InternationalPage() {
 
   function openNew() { setEditing(null); setForm({ invoice_date: today(), customer_id: '', tax_invoice_number: '', remarks: '', factory_id: factoryId }); setItems([EMPTY_ITEM()]); setShowForm(true) }
   function openEdit(row: IOInternational) { setEditing(row); setForm({ invoice_date: row.invoice_date, customer_id: row.customer_id ?? '', tax_invoice_number: row.tax_invoice_number ?? '', remarks: row.remarks ?? '', factory_id: row.factory_id ?? factoryId }); setItems(row.items?.length ? row.items.map(it => ({ ...it })) : [EMPTY_ITEM()]); setShowForm(true) }
-  async function handleSave(doPrint = false) {
+  async function handleSave(printType: 'invoice' | 'label' | false = false) {
     const validItems = items.filter(it => it.product_id)
     if (!validItems.length) { alert('Add at least one product.'); return }
     setSaving(true)
@@ -50,20 +52,22 @@ export default function InternationalPage() {
       setShowForm(false)
       const next = await fetchInternationals(factoryId || undefined)
       setRows(next)
-      if (doPrint) {
+      if (printType) {
         const full = next.find(r => r.id === saved.id) ?? (editing ?? null)
-        if (full) await printLetterHeadInvoice('International', full as any, products)
+        if (full) {
+          if (printType === 'invoice') await printLetterHeadInvoice('International', full as any, products)
+          else await printLabelForInternational(full as any, products)
+        }
       }
     }
     catch (e: any) { alert(e.message) } finally { setSaving(false) }
   }
 
-  async function handlePrint(row: IOInternational) {
+  async function handlePrint(row: IOInternational, printType: 'invoice' | 'label') {
     try {
-      await printLetterHeadInvoice('International', row as any, products)
-    } catch (e: any) {
-      alert(e.message)
-    }
+      if (printType === 'invoice') await printLetterHeadInvoice('International', row as any, products)
+      else await printLabelForInternational(row as any, products)
+    } catch (e: any) { alert(e.message) }
   }
   async function handleDelete(id: string) { if (!confirm('Delete?')) return; await deleteInternational(id); loadData() }
   function setItem(i: number, field: keyof IOLineItem, value: any) { setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it)) }
@@ -172,7 +176,7 @@ export default function InternationalPage() {
         <Search size={14} className="text-muted flex-shrink-0"/>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search invoice no, customer…" className="flex-1 bg-transparent outline-none text-sm text-primary placeholder:text-muted"/>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-visible">
         <div className="sm:hidden divide-y" style={{ borderColor: 'var(--color-border)' }}>
           {loading ? <div className="py-12 text-center"><div className="inline-block w-6 h-6 border-2 border-inputer border-t-transparent rounded-full animate-spin"/></div>
           : filtered.length === 0 ? <div className="py-12 text-center text-muted text-sm">No international invoices</div>
@@ -184,7 +188,15 @@ export default function InternationalPage() {
                   <div className="text-xs text-muted mt-0.5">{fmtDate(row.invoice_date)}</div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => handlePrint(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={14}/></button>
+                  <div className="relative">
+                    <button onClick={() => setPrintDropdownId(printDropdownId === row.id ? null : row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={14}/></button>
+                    {printDropdownId === row.id && (
+                      <div className="absolute z-20 right-0 top-full mt-1 w-36 rounded-lg border border-border shadow-lg overflow-hidden" style={{ background: 'var(--color-panel)' }}>
+                        <button onMouseDown={() => { handlePrint(row, 'invoice'); setPrintDropdownId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-layer text-primary">Invoice</button>
+                        <button onMouseDown={() => { handlePrint(row, 'label'); setPrintDropdownId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-layer text-primary">Label</button>
+                      </div>
+                    )}
+                  </div>
                   <button onClick={() => openEdit(row)} className="p-2 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={14}/></button>
                   <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                 </div>
@@ -198,7 +210,7 @@ export default function InternationalPage() {
             </div>
           ))}
         </div>
-        <div className="hidden sm:block overflow-x-auto">
+        <div className="hidden sm:block overflow-visible">
           <table className="data-table">
             <thead><tr><th>Tax Invoice No</th><th>Date</th><th>Customer</th><th>Factory</th><th className="text-right">Amount</th><th className="text-right">Items</th><th/></tr></thead>
             <tbody>
@@ -213,7 +225,15 @@ export default function InternationalPage() {
                   <td className="text-right font-semibold text-xs">₹{rowTotal(row.items ?? []).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                   <td className="text-right text-xs text-muted">{row.items?.length ?? 0}</td>
                   <td className="text-right"><div className="flex items-center justify-end gap-1">
-                    <button onClick={() => handlePrint(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={13}/></button>
+                    <div className="relative">
+                      <button onClick={() => setPrintDropdownId(printDropdownId === row.id ? null : row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors" title="Print"><Printer size={13}/></button>
+                      {printDropdownId === row.id && (
+                        <div className="absolute z-20 right-0 top-full mt-1 w-36 rounded-lg border border-border shadow-lg overflow-hidden" style={{ background: 'var(--color-panel)' }}>
+                          <button onMouseDown={() => { handlePrint(row, 'invoice'); setPrintDropdownId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-layer text-primary">Invoice</button>
+                          <button onMouseDown={() => { handlePrint(row, 'label'); setPrintDropdownId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-layer text-primary">Label</button>
+                        </div>
+                      )}
+                    </div>
                     <button onClick={() => openEdit(row)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-inputer transition-colors"><Pencil size={13}/></button>
                     <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-layer text-muted hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                   </div></td>
@@ -247,13 +267,13 @@ export default function InternationalPage() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-semibold text-primary">Line Items</h3><button onClick={() => setItems(p => [...p, EMPTY_ITEM()])} className="text-xs text-inputer hover:underline flex items-center gap-1"><Plus size={12}/> Add Row</button></div>
-                <div className="border border-border rounded-xl overflow-hidden">
+                <div className="border border-border rounded-xl overflow-visible">
                   <table className="w-full text-xs">
                     <thead style={{ background: 'var(--color-surface)' }}><tr className="border-b border-border"><th className="text-left px-3 py-2 font-semibold text-muted">Product</th><th className="text-right px-3 py-2 font-semibold text-muted">QTY (KGs)</th><th className="text-right px-3 py-2 font-semibold text-muted">Price</th><th className="text-right px-3 py-2 font-semibold text-muted">Total</th><th className="text-left px-3 py-2 font-semibold text-muted">Remarks</th><th className="px-2"/></tr></thead>
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={i} className="border-b border-border last:border-0">
-                          <td className="px-2 py-2 min-w-[180px]"><div className="flex gap-1"><select value={it.product_id} onChange={e => setItem(i, 'product_id', e.target.value)} className="input flex-1 text-xs py-1.5"><option value="">— Product —</option>{products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}</select><button onClick={() => setShowProductModal(true)} className="btn btn-inputer px-2 py-1.5 text-xs">+</button></div></td>
+                          <td className="px-2 py-2 min-w-[180px]"><div className="flex gap-1"><ProductComboSearch products={products} value={it.product_id} onChange={v => setItem(i, 'product_id', v)} className="flex-1"/><button onClick={() => setShowProductModal(true)} className="btn btn-inputer px-2 py-1.5 text-xs">+</button></div></td>
                           <td className="px-2 py-2"><input type="number" min={0} value={it.quantity || ''} placeholder="0" onChange={e => setItem(i, 'quantity', parseFloat(e.target.value) || 0)} className="input w-20 text-right py-1.5 text-xs"/></td>
                           <td className="px-2 py-2"><input type="number" min={0} value={it.price || ''} placeholder="0" onChange={e => setItem(i, 'price', parseFloat(e.target.value) || 0)} className="input w-24 text-right py-1.5 text-xs"/></td>
                           <td className="px-2 py-2 text-right font-semibold text-primary whitespace-nowrap">₹{(it.price * it.quantity).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
@@ -269,7 +289,8 @@ export default function InternationalPage() {
             </div>
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
               <button onClick={() => setShowForm(false)} className="btn btn-ghost">Cancel</button>
-              <button onClick={() => handleSave(true)} disabled={saving} className="btn btn-ghost">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Printer size={14}/>}{editing ? 'Update & Print' : 'Save & Print'}</button>
+              <button onClick={() => handleSave('label')} disabled={saving} className="btn btn-ghost">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Printer size={14}/>}{editing ? 'Update & Label' : 'Save & Label'}</button>
+              <button onClick={() => handleSave('invoice')} disabled={saving} className="btn btn-ghost">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Printer size={14}/>}{editing ? 'Update & Invoice' : 'Save & Invoice'}</button>
               <button onClick={() => handleSave(false)} disabled={saving} className="btn btn-inputer">{saving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <Save size={14}/>}{editing ? 'Update' : 'Save'}</button>
             </div>
           </div>

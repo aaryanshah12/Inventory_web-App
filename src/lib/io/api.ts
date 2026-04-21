@@ -26,10 +26,18 @@ function pad2(n: number) {
   return String(n).padStart(2, '0')
 }
 
+const NO_VH_TYPES: DocType[] = ['domestic', 'international']
+
 function makeVHNumber(seq: number, date: Date) {
   const mm = pad2(date.getMonth() + 1)
   const yy = pad2(date.getFullYear() % 100)
   return `VH ${seq}/${mm}/${yy}`
+}
+
+function makePlainNumber(seq: number, date: Date) {
+  const mm = pad2(date.getMonth() + 1)
+  const yy = pad2(date.getFullYear() % 100)
+  return `${seq}/${mm}/${yy}`
 }
 
 function parseVHNumber(v: unknown): { seq: number; yy: string } | null {
@@ -40,9 +48,17 @@ function parseVHNumber(v: unknown): { seq: number; yy: string } | null {
   return { seq: parseInt(m[1], 10) || 0, yy: m[3] }
 }
 
+function parsePlainNumber(v: unknown): { seq: number; yy: string } | null {
+  if (typeof v !== 'string') return null
+  const m = v.trim().match(/^(\d+)\/(\d{2})\/(\d{2})$/)
+  if (!m) return null
+  return { seq: parseInt(m[1], 10) || 0, yy: m[3] }
+}
+
 async function computeNextNumber(type: DocType, date = new Date()): Promise<string> {
   const { table, column } = DOC_TABLE[type]
   const yy = pad2(date.getFullYear() % 100)
+  const noVH = NO_VH_TYPES.includes(type)
 
   // Pull a small slice of recent numbers and compute max for this year.
   // This keeps the logic in-app, even if the Supabase RPC isn't updated.
@@ -55,25 +71,28 @@ async function computeNextNumber(type: DocType, date = new Date()): Promise<stri
 
   let max = 0
   for (const row of (data ?? []) as any[]) {
-    const parsed = parseVHNumber(row?.[column])
+    const parsed = noVH
+      ? (parsePlainNumber(row?.[column]) ?? parseVHNumber(row?.[column]))  // also parse legacy VH if any
+      : parseVHNumber(row?.[column])
     if (!parsed) continue
     if (parsed.yy !== yy) continue
     if (parsed.seq > max) max = parsed.seq
   }
 
-  return makeVHNumber(max + 1, date)
+  return noVH ? makePlainNumber(max + 1, date) : makeVHNumber(max + 1, date)
 }
 
 export async function getNextNumber(type: DocType, date?: string): Promise<string> {
-  // Prefer the legacy RPC if it already returns the desired format;
-  // otherwise fall back to local computation.
-  try {
-    const { data, error } = await supabase.rpc('io_next_number', { p_doc_type: type })
-    if (!error && typeof data === 'string' && parseVHNumber(data)) return data
-  } catch {
-    // ignore and fallback
-  }
   const d = date ? new Date(date) : new Date()
+  // Domestic & International use plain numbering — skip the RPC which returns VH format
+  if (!NO_VH_TYPES.includes(type)) {
+    try {
+      const { data, error } = await supabase.rpc('io_next_number', { p_doc_type: type })
+      if (!error && typeof data === 'string' && parseVHNumber(data)) return data
+    } catch {
+      // ignore and fallback
+    }
+  }
   return computeNextNumber(type, d)
 }
 
@@ -290,7 +309,7 @@ export const deleteProduct = async (id: string) => {
 export const fetchInwards = async (factory_id?: string): Promise<IOInward[]> => {
   let q = supabase.from('io_inward')
     .select('*, factory:factories(id,name), supplier:io_companies(id,company_name,person_name), items:io_inward_items(*, product:io_products(product_name,hsn_code))')
-    .order('inward_date', { ascending: false })
+    .order('inward_date', { ascending: true })
   if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error; return data ?? []
@@ -338,7 +357,7 @@ export const deleteInward = async (id: string) => {
 export const fetchOutwards = async (factory_id?: string): Promise<IOOutward[]> => {
   let q = supabase.from('io_outward')
     .select('*, factory:factories(id,name), supplier:io_companies(id,company_name,person_name), items:io_outward_items(*, product:io_products(product_name,hsn_code))')
-    .order('outward_date', { ascending: false })
+    .order('outward_date', { ascending: true })
   if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error; return data ?? []
@@ -414,7 +433,7 @@ export const deleteOutward = async (id: string) => {
 export const fetchDomestics = async (factory_id?: string): Promise<IODomestic[]> => {
   let q = supabase.from('io_domestic')
     .select('*, factory:factories(id,name), customer:io_companies(id,company_name,person_name), items:io_domestic_items(*, product:io_products(product_name,hsn_code))')
-    .order('invoice_date', { ascending: false })
+    .order('invoice_date', { ascending: true })
   if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error; return data ?? []
@@ -463,7 +482,7 @@ export const deleteDomestic = async (id: string) => {
 export const fetchInternationals = async (factory_id?: string): Promise<IOInternational[]> => {
   let q = supabase.from('io_international')
     .select('*, factory:factories(id,name), customer:io_companies(id,company_name,person_name), items:io_international_items(*, product:io_products(product_name,hsn_code))')
-    .order('invoice_date', { ascending: false })
+    .order('invoice_date', { ascending: true })
   if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error; return data ?? []
@@ -512,7 +531,7 @@ export const deleteInternational = async (id: string) => {
 export const fetchQuotations = async (factory_id?: string): Promise<IOQuotation[]> => {
   let q = supabase.from('io_quotations')
     .select('*, factory:factories(id,name), customer:io_companies(id,company_name,person_name), items:io_quotation_items(*, product:io_products(product_name))')
-    .order('quotation_date', { ascending: false })
+    .order('quotation_date', { ascending: true })
   if (factory_id) q = q.eq('factory_id', factory_id)
   const { data, error } = await q
   if (error) throw error; return data ?? []
