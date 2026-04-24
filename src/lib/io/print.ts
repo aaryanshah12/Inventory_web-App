@@ -14,25 +14,32 @@ async function fetchArrayBuffer(url: string) {
 }
 
 function openPrintBlob(blob: Blob, _filename: string) {
-  const url = URL.createObjectURL(blob)
-  const w = window.open(url, '_blank')
-  if (!w) {
-    window.location.href = url
-    return
-  }
-  const t = window.setInterval(() => {
-    try {
-      if (w.document?.readyState === 'complete') {
-        window.clearInterval(t)
-        w.focus()
-        w.print()
-      }
-    } catch {
-      // ignore
-    }
-  }, 300)
-  window.setTimeout(() => window.clearInterval(t), 6000)
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  const pdfUrl = URL.createObjectURL(blob)
+  // Determine page size from the blob so @page matches the PDF exactly.
+  // For labels (100×50mm) this eliminates the browser's blank trailing page.
+  const isLabel = blob.size < 200_000  // heuristic: labels are small PDFs
+  const pageSize = isLabel ? '100mm 50mm' : 'A4'
+  const html = [
+    '<!DOCTYPE html><html><head><style>',
+    `@page{size:${pageSize};margin:0}`,
+    'html,body{margin:0;padding:0}',
+    'embed{width:100%;height:100vh;border:none}',
+    '</style></head><body>',
+    `<embed src="${pdfUrl}" type="application/pdf">`,
+    '<script>',
+    'window.addEventListener("load",function(){',
+    '  setTimeout(function(){window.print();},400);',
+    '});',
+    '</script></body></html>',
+  ].join('')
+  const htmlBlob = new Blob([html], { type: 'text/html' })
+  const htmlUrl = URL.createObjectURL(htmlBlob)
+  const w = window.open(htmlUrl, '_blank')
+  if (!w) { window.location.href = pdfUrl; return }
+  window.setTimeout(() => {
+    URL.revokeObjectURL(pdfUrl)
+    URL.revokeObjectURL(htmlUrl)
+  }, 60_000)
 }
 
 function productNameById(products: IOProduct[], id: string) {
@@ -285,8 +292,6 @@ async function printLabelPages(
   const { PDFDocument, StandardFonts, rgb } = await getPdfLib()
   const ab = await fetchArrayBuffer('/label.pdf')
   const src = await PDFDocument.load(ab)
-  const tplPage = src.getPages()[0]
-  void tplPage
 
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.HelveticaBold)
@@ -300,7 +305,7 @@ async function printLabelPages(
   // Embed template once for reuse across all label pages
   const [embeddedTpl] = await pdf.embedPdf(src, [0])
 
-  const validItems = items.filter(it => it.product_id || it.product?.product_name)
+  const validItems = items.filter(it => it != null && (it.product_id != null && it.product_id !== ''))
   const pages = validItems.length ? validItems : [{ product_id: '', quantity: 0, price: 0 } as any]
   for (const it of pages) {
     const page = pdf.addPage([width, height])
